@@ -1,0 +1,156 @@
+# RingFence — single source of truth for every knob.
+seed: 20260905
+
+simulation:
+  days: 150
+  # "Now" is the last simulated day. Everything downstream is scored as if we
+  # were standing at this point in time and could not see past it.
+  as_of_day: 150
+  n_customers: 130000
+  payments_per_day_mean: 3000
+  currency: INR
+
+  # Temporal split boundaries (day indices, inclusive).
+  # Chosen so every training label has matured by as_of_day: a day-89 payment's
+  # dispute window shuts on day 134, comfortably before day 150.
+  train_days: [0, 89]
+  val_days:   [90, 109]
+  test_days:  [110, 149]
+
+# Legitimate traffic shape
+honest:
+  amount_lognorm_mu: 7.1          # ~ Rs 1200 median order
+  amount_lognorm_sigma: 0.95
+  # A genuine small-ticket segment (wallet top-ups, single-item FMCG, digital
+  # goods). Without it, "tiny amount" alone separates card testing perfectly and
+  # the benchmark becomes a toy.
+  micro_ticket_share: 0.085
+  micro_amount_range_paise: [200, 4900]
+  method_mix:
+    upi: 0.52
+    card: 0.26
+    netbanking: 0.10
+    wallet: 0.07
+    emi: 0.03
+    paylater: 0.02
+  base_failure_rate: 0.11
+  refund_rate: 0.045
+  dispute_rate: 0.0009
+  repeat_customer_prob: 0.62
+  # A growing merchant continuously acquires. Without a large genuinely-new
+  # cohort, "account age < 60 days" separates fraud almost perfectly and the
+  # benchmark measures nothing. Target: ~40% of honest payments from accounts
+  # younger than 60 days, which is normal for Indian D2C.
+  legacy_customer_share: 0.42
+  legacy_signup_range: [-400, -60]
+  recent_signup_range: [-60, 149]
+
+# Benign structures that MIMIC ring signal. These exist to make naive
+# connected-components detection fail, and to force honest FP accounting.
+confounders:
+  shared_family_cards: 2100        # one card fingerprint across 2-4 accounts
+  shared_nat_ips: 320             # hostel/office/carrier NAT, 40-400 accounts each
+  shared_kiosk_devices: 520       # public/refurbished device across 5-25 accounts
+  shared_building_addresses: 1700  # apartment complex, 6-30 accounts each
+
+# Abuse ring archetypes
+rings:
+  # Fraction of ring accounts that are aged rather than freshly minted --
+  # bought, farmed, or taken over. Real crews do not always start from zero, and
+  # a detector trained as if they do collapses the moment they don't.
+  aged_account_share: 0.38
+  aged_signup_range: [60, 400]
+
+  card_testing:
+    count: 48
+    devices_per_ring: [1, 3]
+    cards_per_ring: [30, 140]
+    amount_range: [200, 900]       # paise-level probes, in paise -> Rs 2-9
+    failure_rate: 0.86
+    burst_minutes: [20, 180]
+    active_day_span: [1, 3]
+
+  refund_abuse:
+    count: 68
+    accounts_per_ring: [6, 26]
+    shared_addresses: [1, 3]
+    shared_devices: [1, 4]
+    orders_per_account: [1, 3]
+    refund_rate: 0.72
+    amount_multiplier: 1.15
+    active_day_span: [5, 30]
+
+  bust_out:
+    count: 48
+    accounts_per_ring: [8, 30]
+    shared_drop_addresses: [1, 2]
+    amount_multiplier: 1.9
+    dispute_rate: 0.55
+    dispute_lag_days: [25, 60]
+    account_age_days_max: 40
+    active_day_span: [2, 12]
+
+graph:
+  # Identifier types linked into the identity graph, with a prior on how much
+  # evidential weight a shared value of that type can ever carry.
+  # prior  = the most evidential weight a shared value of this type can carry.
+  # max_df  = above this many distinct accounts, the value is infrastructure
+  #           rather than evidence and is dropped entirely. A single 400-account
+  #           carrier NAT would otherwise inject an 80,000-edge clique and merge
+  #           the whole customer base into one component -- down-weighting is
+  #           not enough, it has to be cut.
+  link_types:
+    card_fingerprint:      {prior: 1.00, max_df: 8}
+    device_fingerprint:    {prior: 0.85, max_df: 25}
+    shipping_address_hash: {prior: 0.75, max_df: 35}
+    contact:               {prior: 0.70, max_df: 6}
+    email_root:            {prior: 0.65, max_df: 12}
+    ip:                    {prior: 0.35, max_df: 15}
+  idf_min_weight: 0.08             # edges below this are dropped entirely
+  max_identifier_degree: 500       # global backstop above the per-type caps
+  # MUST be <= 1.0. At resolution 1.15 Louvain shatters a clique into
+  # singletons -- and a ring sharing one drop address IS a clique, so every
+  # bust-out ring of 14+ accounts came back unclustered while rings of 13 or
+  # fewer (below the Louvain cutoff) clustered fine. The tell was a recall
+  # cliff at exactly LOUVAIN_MIN_COMPONENT. See FINDINGS.md.
+  louvain_resolution: 0.92
+  # Trailing window: evidence decays. A device shared 6 months ago is not the
+  # same claim as a device shared last week, and an unbounded graph slowly
+  # merges the entire customer base into one component.
+  window_days: 45
+  # The graph is rebuilt every `stride` days and a payment is scored against the
+  # most recent snapshot that is strictly older than it.
+  #
+  # This must be 1. At stride 5 the graph never sees a card-testing ring at all
+  # (median lifetime 2 days), so the graph feature block became a *missingness*
+  # signal -- present for established honest accounts, absent for fraud -- and
+  # measurably HURT the model. Measured, not assumed: see reports/ablation.csv
+  # in the stride-5 run recorded in FINDINGS.md.
+  snapshot_stride_days: 1
+
+model:
+  algorithm: hist_gradient_boosting
+  learning_rate: 0.06
+  max_iter: 400
+  max_leaf_nodes: 31
+  l2_regularization: 1.0
+  early_stopping: true
+  validation_fraction: null        # we use the explicit temporal val split
+  class_weight_positive: 6.0
+
+# Rupee cost model. Every headline number is a function of these five numbers,
+# and the eval publishes the sensitivity so a reviewer can substitute their own.
+label_maturity:
+  # Days after a captured payment before "no dispute yet" counts as proof of
+  # clean. Scheme chargeback windows run 45-120 days; 45 is the working
+  # assumption most Indian merchants operate on.
+  dispute_window_days: 45
+  return_window_days: 30
+
+costs:
+  chargeback_fee_inr: 1500         # scheme + acquirer fee per dispute
+  fraud_recovery_rate: 0.12        # share of fraud loss actually recovered
+  gross_margin: 0.28               # merchant margin on a good order
+  false_block_churn_factor: 2.6    # LTV multiple lost when a good customer is blocked
+  manual_review_cost_inr: 45       # analyst cost per queued review
+  review_band: [0.35, 0.80]        # score band routed to human review
