@@ -1,0 +1,13 @@
+bucket,false_positives,share
+nat_ip,142,0.2518
+building_addr,118,0.2092
+building_addr+nat_ip,103,0.1826
+no_shared_identifier,97,0.172
+building_addr+kiosk_device+nat_ip,42,0.0745
+building_addr+kiosk_device,37,0.0656
+building_addr+family_card+nat_ip,10,0.0177
+kiosk_device+nat_ip,6,0.0106
+building_addr+family_card+kiosk_device,3,0.0053
+family_card,3,0.0053
+kiosk_device,2,0.0035
+building_addr+family_card,1,0.0018
