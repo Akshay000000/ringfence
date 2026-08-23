@@ -6,3 +6,5 @@ data/
 reports/*.pkl
 .DS_Store
 .ipynb_checkpoints/
+reports/explanations.json
+*.bundle

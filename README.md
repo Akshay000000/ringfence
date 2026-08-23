@@ -154,6 +154,51 @@ exactly the cliques it existed to find.
 
 ---
 
+## Every alert is contestable
+
+A score is not actionable on its own, and "the model said so" is not something
+you can put in front of a merchant whose payment you just blocked. Each alert
+carries a reason and the evidence behind it.
+
+**Reasons** come from group occlusion, not SHAP. Features are bucketed into
+semantic groups — velocity, card fan-out, address concentration, cohort
+synchrony — and each is attributed by replacing it wholesale with what a normal
+customer looks like and re-scoring. That yields a genuine counterfactual on the
+actual model, and it removes a heavy dependency. It is also honest about its
+limit: occluding groups one at a time cannot untangle interactions, so
+contributions are ranked, never totalled.
+
+**Evidence** is the subgraph the alert came from — the linked accounts, the
+identifiers tying them together with the weight each contributed, and how this
+payment attached to the cluster. Identifier values are masked, because the
+packet is meant to travel into a ticket.
+
+A refund-abuse ring, as the system explains it:
+
+```
+Scored 1.000. Driven by the whole cluster transacted inside 4 days.
+
+  cluster cl_239 as of day 134 (12 linked accounts)
+  attached: own prior activity in this cluster
+  linked by:
+    device                     dev…bWc        12 accounts   weight 0.66
+    email (alias-normalised)   m1w…com         3 accounts   weight 0.58
+    shipping address           add…Zw2        12 accounts   weight 0.58
+    IP address                 97.…239        12 accounts   weight 0.27
+```
+
+Twelve "different customers", one handset, one delivery address, and three of
+the email addresses collapsing to the same inbox once plus-aliasing is
+normalised.
+
+`python -m ringfence.cli explain` writes these for the top alerts **and for the
+highest-scoring false positives**, which is the more useful half of the report.
+The worst one is a two-day-old account sharing a card with a 343-day-old
+account — a family, not a ring. Exactly the confounder the generator plants, and
+the system falls for it.
+
+---
+
 ## What it does not catch
 
 Published because a risk team would act on this table, not on the headline.
@@ -195,7 +240,7 @@ incapable of offense:
 ```bash
 pip install -r requirements.txt
 
-make all            # data → features → train → evaluate → verify
+make all            # data → features → train → evaluate → explain → verify
 ```
 
 Or stage by stage:
@@ -205,6 +250,7 @@ python -m ringfence.cli data       # synthetic corpus (~20s)
 python -m ringfence.cli features   # tabular + causal graph features (~5min)
 python -m ringfence.cli train      # both ablation arms (~20s)
 python -m ringfence.cli evaluate   # every number in this README
+python -m ringfence.cli explain    # analyst-readable alerts + evidence packets
 python -m ringfence.cli verify     # leakage and honesty checks
 ```
 
@@ -221,6 +267,7 @@ ringfence/
   features/    tabular featuriser and strictly-causal graph featuriser
   model/       ablation arms, leakage allowlist
   evaluation/  metrics, rupee cost model, verification checks
+  explain/     group-occlusion attribution and evidence subgraphs
 configs/       one YAML controls every knob
 reports/       generated artefacts — all regenerable
 ```

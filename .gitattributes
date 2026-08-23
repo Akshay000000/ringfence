@@ -1,0 +1,13 @@
+# The repo stores LF for everything textual. Without this, a Windows checkout
+# rewrites all 43 files to CRLF and every `git status` reports the entire tree
+# as modified, burying real changes in 4,000 lines of invisible churn.
+* text=auto eol=lf
+
+# These break outright with CRLF.
+Makefile text eol=lf
+*.sh     text eol=lf
+
+*.png    binary
+*.gz     binary
+*.pkl    binary
+*.bundle binary

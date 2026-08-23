@@ -1,6 +1,6 @@
-.PHONY: all data features train evaluate verify clean test
+.PHONY: all data features train evaluate explain verify clean test
 
-all: data features train evaluate verify
+all: data features train evaluate explain verify
 
 data:
 	python3 -m ringfence.cli data
@@ -13,6 +13,9 @@ train:
 
 evaluate:
 	python3 -m ringfence.cli evaluate
+
+explain:
+	python3 -m ringfence.cli explain
 
 verify:
 	python3 -m ringfence.cli verify
