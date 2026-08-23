@@ -76,9 +76,10 @@ class Evidence:
         if not self.shared_identifiers.empty:
             lines.append("  linked by:")
             for _, link in self.shared_identifiers.head(max_links).iterrows():
+                weight = "pruned as hub" if link.get("pruned") else f"weight {link['weight']:.2f}"
                 lines.append(
                     f"    {link['link_label']:<26} {link['masked']:<14} "
-                    f"{int(link['accounts'])} accounts   weight {link['weight']:.2f}"
+                    f"{int(link['accounts'])} accounts   {weight}"
                 )
         if not self.members.empty:
             lines.append("  accounts:")
@@ -178,13 +179,20 @@ class EvidenceBuilder:
         links = counts.reset_index().rename(columns={"customer_id": "accounts"})
         if not links.empty:
             weights = snapshot.identifier_weight
-            links["weight"] = links["value"].map(weights).fillna(0.0)
+            # An identifier absent from the weight map was pruned as a hub -- it
+            # exceeded its type's max_df, so it contributed no edge at all.
+            # Reporting that as "weight 0.00" reads like a bug; it is the IDF
+            # pruning working, and an analyst should see which links were
+            # discarded as infrastructure.
+            links["weight"] = links["value"].map(weights)
+            links["pruned"] = links["weight"].isna()
+            links["weight"] = links["weight"].fillna(0.0)
             links["link_label"] = links["link_type"].map(LINK_LABELS).fillna(links["link_type"])
             links["masked"] = links["value"].map(mask)
             links = links.sort_values(["weight", "accounts"], ascending=False)
-            links = links[["link_label", "masked", "accounts", "weight"]]
+            links = links[["link_label", "masked", "accounts", "weight", "pruned"]]
         else:
-            links = pd.DataFrame(columns=["link_label", "masked", "accounts", "weight"])
+            links = pd.DataFrame(columns=["link_label", "masked", "accounts", "weight", "pruned"])
 
         index = pd.Series(np.arange(snapshot.n), index=snapshot.customers)
         positions = index.reindex(member_ids).dropna().astype(int).to_numpy()

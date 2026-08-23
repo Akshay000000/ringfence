@@ -1,0 +1,475 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RingFence — Analyst Console</title>
+<style>
+  :root {
+    color-scheme: light;
+    --surface-1: #fcfcfb;
+    --plane: #f9f9f7;
+    --text-primary: #0b0b0b;
+    --text-secondary: #52514e;
+    --text-muted: #898781;
+    --grid: #e1e0d9;
+    --axis: #c3c2b7;
+    --border: rgba(11,11,11,0.10);
+    --series-graph: #2a78d6;
+    --series-baseline: #eb6834;
+    --status-good: #0ca30c;
+    --status-critical: #d03b3b;
+    --status-warning: #fab219;
+    --success-text: #006300;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --surface-1: #1a1a19;
+      --plane: #0d0d0d;
+      --text-primary: #ffffff;
+      --text-secondary: #c3c2b7;
+      --text-muted: #898781;
+      --grid: #2c2c2a;
+      --axis: #383835;
+      --border: rgba(255,255,255,0.10);
+      --series-graph: #3987e5;
+      --series-baseline: #d95926;
+      --success-text: #0ca30c;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --surface-1: #1a1a19;
+    --plane: #0d0d0d;
+    --text-primary: #ffffff;
+    --text-secondary: #c3c2b7;
+    --text-muted: #898781;
+    --grid: #2c2c2a;
+    --axis: #383835;
+    --border: rgba(255,255,255,0.10);
+    --series-graph: #3987e5;
+    --series-baseline: #d95926;
+    --success-text: #0ca30c;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--plane);
+    color: var(--text-primary);
+    font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  .wrap { max-width: 1400px; margin: 0 auto; padding: 24px 20px 64px; }
+
+  header.top { display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap; margin-bottom: 4px; }
+  h1 { font-size: 21px; margin: 0; letter-spacing: -0.01em; }
+  .sub { color: var(--text-secondary); font-size: 13px; }
+  .defense {
+    margin-left: auto; font-size: 11.5px; color: var(--text-secondary);
+    border: 1px solid var(--border); border-radius: 999px; padding: 3px 10px;
+    background: var(--surface-1);
+  }
+  .context { color: var(--text-muted); font-size: 12.5px; margin: 6px 0 20px; }
+
+  .card {
+    background: var(--surface-1); border: 1px solid var(--border);
+    border-radius: 10px; padding: 16px 18px;
+  }
+  h2 { font-size: 13px; margin: 0 0 2px; letter-spacing: 0.01em; }
+  .cap { color: var(--text-muted); font-size: 12px; margin: 0 0 14px; }
+
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px,1fr)); gap: 12px; margin-bottom: 16px; }
+  .tile .label { font-size: 11.5px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.04em; }
+  .tile .value { font-size: 27px; font-weight: 600; margin-top: 6px; letter-spacing: -0.02em; }
+  .tile .foot { font-size: 12px; color: var(--text-muted); margin-top: 3px; }
+  .up { color: var(--success-text); font-weight: 600; }
+
+  .charts { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+  @media (max-width: 900px) { .charts { grid-template-columns: 1fr; } }
+
+  .legend { display: flex; gap: 16px; font-size: 12px; color: var(--text-secondary); margin-bottom: 12px; }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .swatch { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+
+  .rows { display: flex; flex-direction: column; gap: 13px; }
+  .row .rlabel { font-size: 12px; color: var(--text-secondary); margin-bottom: 5px; display: flex; justify-content: space-between; }
+  .row .rlabel b { color: var(--text-primary); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .track { position: relative; height: 10px; }
+  .bar {
+    position: absolute; left: 0; height: 10px; border-radius: 0 4px 4px 0;
+    transition: width .35s cubic-bezier(.4,0,.2,1);
+  }
+  .bar.g { background: var(--series-graph); top: 0; }
+  .bar.b { background: var(--series-baseline); top: 12px; }
+  .track { height: 22px; }
+  .gridline { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--grid); }
+
+  .main { display: grid; grid-template-columns: 400px 1fr; gap: 16px; align-items: start; }
+  @media (max-width: 1050px) { .main { grid-template-columns: 1fr; } }
+
+  .filters { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+  .filters button {
+    font: inherit; font-size: 12px; padding: 4px 10px; cursor: pointer;
+    background: transparent; color: var(--text-secondary);
+    border: 1px solid var(--border); border-radius: 999px;
+  }
+  .filters button[aria-pressed="true"] { background: var(--text-primary); color: var(--surface-1); border-color: var(--text-primary); }
+
+  .queue { max-height: 560px; overflow-y: auto; margin: 0 -18px -16px; }
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  thead th {
+    position: sticky; top: 0; background: var(--surface-1); z-index: 1;
+    text-align: left; font-weight: 500; color: var(--text-muted); font-size: 11px;
+    text-transform: uppercase; letter-spacing: 0.04em; padding: 6px 8px; border-bottom: 1px solid var(--border);
+  }
+  tbody td { padding: 7px 8px; border-bottom: 1px solid var(--grid); font-variant-numeric: tabular-nums; }
+  tbody tr { cursor: pointer; }
+  tbody tr:hover { background: color-mix(in srgb, var(--text-primary) 4%, transparent); }
+  tbody tr[aria-selected="true"] { background: color-mix(in srgb, var(--series-graph) 12%, transparent); }
+  td.num { text-align: right; }
+  .pid { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 11.5px; color: var(--text-secondary); }
+
+  .chip { font-size: 11px; padding: 1.5px 7px; border-radius: 999px; border: 1px solid var(--border); white-space: nowrap; }
+  .chip .dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; margin-right: 5px; vertical-align: 0px; }
+
+  .empty { color: var(--text-muted); font-size: 13px; padding: 40px 0; text-align: center; }
+  .summary { font-size: 14px; line-height: 1.55; margin: 0 0 16px; }
+  .caveat {
+    font-size: 12.5px; color: var(--text-secondary); margin: -8px 0 16px;
+    border-left: 3px solid var(--status-warning); padding: 6px 0 6px 10px;
+  }
+
+  .whatif { display: flex; align-items: stretch; gap: 0; margin: 4px 0 20px; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .whatif div { padding: 10px 14px; flex: 1; }
+  .whatif div + div { border-left: 1px solid var(--border); }
+  .whatif .k { font-size: 11px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.04em; }
+  .whatif .v { font-size: 20px; font-weight: 600; margin-top: 3px; font-variant-numeric: tabular-nums; }
+
+  .reason { margin-bottom: 11px; }
+  .reason .rt { display: flex; justify-content: space-between; font-size: 12.5px; margin-bottom: 4px; gap: 12px; }
+  .reason .rt .amt { color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+  .reason .rbar { height: 8px; border-radius: 0 4px 4px 0; background: var(--series-graph); }
+  .reason .rbar.tab { background: var(--series-baseline); }
+  .reason .detail { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
+
+  .ev { display: grid; grid-template-columns: 300px 1fr; gap: 18px; align-items: start; }
+  @media (max-width: 780px) { .ev { grid-template-columns: 1fr; } }
+  .attach { font-size: 12px; color: var(--text-secondary); margin: 0 0 12px; }
+
+  details { margin-top: 14px; }
+  summary { cursor: pointer; font-size: 12px; color: var(--text-secondary); }
+  .tooltip {
+    position: fixed; pointer-events: none; opacity: 0; transition: opacity .12s;
+    background: var(--text-primary); color: var(--surface-1); font-size: 12px;
+    padding: 5px 9px; border-radius: 6px; z-index: 50; white-space: nowrap;
+  }
+  .checks { display: flex; gap: 8px; flex-wrap: wrap; }
+  .checks .c { font-size: 11.5px; color: var(--text-secondary); border: 1px solid var(--border); border-radius: 6px; padding: 5px 9px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <h1>RingFence</h1>
+    <span class="sub">Abuse-ring detection · analyst console</span>
+    <span class="defense">Read-only · no block/refund endpoint exists</span>
+  </header>
+  <p class="context" id="context">loading…</p>
+
+  <div class="tiles" id="tiles"></div>
+
+  <div class="charts">
+    <section class="card">
+      <h2>Recall at fixed precision</h2>
+      <p class="cap">Held-out temporal test split. Higher is better.</p>
+      <div class="legend">
+        <span><i class="swatch" style="background:var(--series-graph)"></i> With identity graph</span>
+        <span><i class="swatch" style="background:var(--series-baseline)"></i> Tabular baseline</span>
+      </div>
+      <div class="rows" id="ablation"></div>
+      <details><summary>Table view</summary><div id="ablation-table"></div></details>
+    </section>
+
+    <section class="card">
+      <h2>Recall by attack type</h2>
+      <p class="cap">Both arms pinned to precision 0.90 — the like-for-like comparison.</p>
+      <div class="legend">
+        <span><i class="swatch" style="background:var(--series-graph)"></i> With identity graph</span>
+        <span><i class="swatch" style="background:var(--series-baseline)"></i> Tabular baseline</span>
+      </div>
+      <div class="rows" id="archetypes"></div>
+      <details><summary>Table view</summary><div id="archetypes-table"></div></details>
+    </section>
+  </div>
+
+  <div class="main">
+    <section class="card">
+      <h2>Alert queue</h2>
+      <p class="cap">Ranked by money at risk (score × amount), not raw score. <span style="color:var(--series-graph)">◆</span> marks alerts with linked-account evidence. Ground truth shown because this is a benchmark.</p>
+      <div class="filters" id="filters">
+        <button data-f="" aria-pressed="true">All</button>
+        <button data-f="fraud" aria-pressed="false">Fraud</button>
+        <button data-f="honest" aria-pressed="false">False positives</button>
+        <button data-f="graph_backed" aria-pressed="false">◆ Graph-backed</button>
+        <button data-f="card_testing" aria-pressed="false">Card testing</button>
+        <button data-f="refund_abuse" aria-pressed="false">Refund abuse</button>
+        <button data-f="bust_out" aria-pressed="false">Bust-out</button>
+      </div>
+      <div class="queue">
+        <table>
+          <thead><tr><th>Payment</th><th class="num">Score</th><th class="num">At risk</th><th>Truth</th></tr></thead>
+          <tbody id="queue"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card" id="detail">
+      <div class="empty">Select an alert to see why it scored, and the evidence behind it.</div>
+    </section>
+  </div>
+
+  <section class="card" style="margin-top:16px">
+    <h2>Verification</h2>
+    <p class="cap">Run by the pipeline, which refuses to report numbers if any fails.</p>
+    <div class="checks" id="checks"></div>
+  </section>
+
+</div>
+<div class="tooltip" id="tip"></div>
+
+<script>
+const tip = document.getElementById('tip');
+function showTip(e, html) {
+  tip.innerHTML = html; tip.style.opacity = 1;
+  tip.style.left = Math.min(e.clientX + 12, innerWidth - tip.offsetWidth - 8) + 'px';
+  tip.style.top = (e.clientY - tip.offsetHeight - 10) + 'px';
+}
+function hideTip() { tip.style.opacity = 0; }
+
+const pct = v => (v == null ? '—' : (v * 100).toFixed(1) + '%');
+const inr = v => v == null ? '—' : '₹' + Math.round(v).toLocaleString('en-IN');
+const VERDICTS = {
+  card_testing:  { label: 'Card testing',  color: 'var(--status-critical)' },
+  refund_abuse:  { label: 'Refund abuse',  color: 'var(--status-critical)' },
+  bust_out:      { label: 'Bust-out',      color: 'var(--status-critical)' },
+  honest:        { label: 'Honest',        color: 'var(--status-good)' },
+};
+
+function bars(container, rows) {
+  container.innerHTML = rows.map(r => `
+    <div class="row">
+      <div class="rlabel"><span>${r.label}</span><b>${pct(r.graph)} <span style="color:var(--text-muted);font-weight:400">vs</span> ${pct(r.base)}</b></div>
+      <div class="track">
+        <div class="gridline" style="left:50%"></div>
+        <div class="bar g" data-t="With graph: ${pct(r.graph)}" style="width:${(r.graph*100).toFixed(1)}%"></div>
+        <div class="bar b" data-t="Baseline: ${pct(r.base)}" style="width:${(r.base*100).toFixed(1)}%"></div>
+      </div>
+    </div>`).join('');
+  container.querySelectorAll('.bar').forEach(b => {
+    b.onmousemove = e => showTip(e, b.dataset.t);
+    b.onmouseleave = hideTip;
+  });
+}
+
+function table(container, rows, cols) {
+  container.innerHTML = '<table><thead><tr>' + cols.map(c => `<th>${c[0]}</th>`).join('') +
+    '</tr></thead><tbody>' + rows.map(r => '<tr>' + cols.map(c => `<td>${c[1](r)}</td>`).join('') + '</tr>').join('') +
+    '</tbody></table>';
+}
+
+let SUMMARY = null;
+
+async function loadSummary() {
+  const s = await (await fetch('/api/summary')).json();
+  SUMMARY = s;
+  const t = s.test_set, g = s.graph, b = s.baseline;
+  document.getElementById('context').textContent =
+    `${t.payments.toLocaleString('en-IN')} payments · ${t.fraud.toLocaleString('en-IN')} fraudulent (${(t.base_rate*100).toFixed(2)}%) · ${t.rings} abuse rings, none seen in training`;
+
+  const ab95 = s.ablation.find(r => r.precision_target === 0.95) || {};
+  const tiles = [
+    { label: 'Recall @ precision 0.95', value: pct(ab95.graph_recall),
+      foot: `<span class="up">+${(ab95.relative_lift_ ?? ab95['relative_lift_%'] ?? 0).toFixed(1)}%</span> vs ${pct(ab95.baseline_recall)} baseline` },
+    { label: 'PR-AUC', value: (g.pr_auc ?? 0).toFixed(4),
+      foot: `baseline ${(b.pr_auc ?? 0).toFixed(4)}` },
+    { label: 'Good customers blocked', value: (g.blocked_good ?? 0).toLocaleString('en-IN'),
+      foot: `baseline blocks ${(b.blocked_good ?? 0).toLocaleString('en-IN')} — ${Math.round((b.blocked_good||1)/(g.blocked_good||1))}× more` },
+    { label: 'Net saving vs doing nothing', value: inr(g.net_saving_inr),
+      foot: `${pct((g.net_saving_inr||0)/(g.do_nothing_inr||1))} of exposure recovered` },
+  ];
+  document.getElementById('tiles').innerHTML = tiles.map(x =>
+    `<div class="card tile"><div class="label">${x.label}</div><div class="value">${x.value}</div><div class="foot">${x.foot}</div></div>`).join('');
+
+  bars(document.getElementById('ablation'), s.ablation.map(r => ({
+    label: 'precision ≥ ' + r.precision_target, graph: r.graph_recall, base: r.baseline_recall })));
+  table(document.getElementById('ablation-table'), s.ablation, [
+    ['Precision target', r => r.precision_target],
+    ['Baseline recall', r => pct(r.baseline_recall)],
+    ['Graph recall', r => pct(r.graph_recall)],
+    ['Lift', r => '+' + (r['relative_lift_%'] ?? 0).toFixed(1) + '%'],
+  ]);
+
+  const byType = {};
+  s.per_archetype.forEach(r => { (byType[r.archetype] = byType[r.archetype] || {})[r.arm] = r.recall; });
+  const arch = Object.entries(byType).map(([k, v]) => ({
+    label: (VERDICTS[k] || {}).label || k, graph: v.graph, base: v.baseline }));
+  bars(document.getElementById('archetypes'), arch);
+  table(document.getElementById('archetypes-table'), arch, [
+    ['Attack type', r => r.label], ['Baseline', r => pct(r.base)], ['With graph', r => pct(r.graph)],
+    ['Lift', r => ((r.graph - r.base) * 100).toFixed(1) + ' pts'],
+  ]);
+
+  document.getElementById('checks').innerHTML = s.verification.map(c =>
+    `<div class="c">${c.passed ? '✓' : '✕'} ${c.check}</div>`).join('');
+}
+
+let selected = null;
+async function loadQueue(filter) {
+  const url = '/api/alerts?limit=120' + (filter ? '&verdict=' + filter : '');
+  const d = await (await fetch(url)).json();
+  document.getElementById('queue').innerHTML = d.alerts.map(a => {
+    const v = VERDICTS[a.verdict] || { label: a.verdict, color: 'var(--text-muted)' };
+    return `<tr data-id="${a.payment_id}" ${a.payment_id === selected ? 'aria-selected="true"' : ''}>
+      <td class="pid">${a.in_cluster ? '<span title="linked-account evidence available" style="color:var(--series-graph)">◆</span> ' : '<span style="opacity:.25">◇</span> '}${a.payment_id.slice(0, 12)}</td>
+      <td class="num">${a.score.toFixed(3)}</td>
+      <td class="num">${inr(a.exposure_inr)}</td>
+      <td><span class="chip"><i class="dot" style="background:${v.color}"></i>${v.label}</span></td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="4" class="empty">No alerts match.</td></tr>';
+  document.querySelectorAll('#queue tr[data-id]').forEach(tr =>
+    tr.onclick = () => selectAlert(tr.dataset.id));
+}
+
+function subgraph(ev) {
+  const members = (ev.members || []).slice(0, 26);
+  if (!members.length) return '';
+  const W = 300, H = 300, cx = W / 2, cy = H / 2, R = 112;
+  const n = members.length;
+  const pos = members.map((m, i) => {
+    const a = (i / n) * Math.PI * 2 - Math.PI / 2;
+    return { x: cx + R * Math.cos(a), y: cy + R * Math.sin(a), m };
+  });
+  const maxAmt = Math.max(...members.map(m => m.amount_inr || 0), 1);
+  // Identifier hubs sit at the centre; every member links to them, which is
+  // literally what the graph asserts.
+  // Only links that actually contributed an edge. A pruned hub is listed in the
+  // table but must not be drawn, or the picture asserts a connection the model
+  // never used.
+  const links = (ev.shared_identifiers || []).filter(l => !l.pruned).slice(0, 3);
+  const hubs = links.map((l, i) => ({
+    x: cx + (links.length > 1 ? (i - (links.length - 1) / 2) * 42 : 0), y: cy, l,
+  }));
+  const edges = pos.map(p => hubs.map(h =>
+    `<line x1="${p.x.toFixed(1)}" y1="${p.y.toFixed(1)}" x2="${h.x}" y2="${h.y}"
+       stroke="var(--axis)" stroke-width="${(0.4 + (h.l.weight || 0) * 1.4).toFixed(2)}" opacity="0.5"/>`).join('')).join('');
+  const nodes = pos.map(p => {
+    const r = 4 + 5 * Math.sqrt((p.m.amount_inr || 0) / maxAmt);
+    return `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${r.toFixed(1)}"
+      fill="var(--series-graph)" stroke="var(--surface-1)" stroke-width="2"
+      data-t="${p.m.customer_id} · ${p.m.payments} payments · ${inr(p.m.amount_inr)} · age ${p.m.account_age_days}d"/>`;
+  }).join('');
+  const hubMarks = hubs.map(h =>
+    `<rect x="${h.x - 7}" y="${h.y - 7}" width="14" height="14" rx="3"
+       fill="var(--series-baseline)" stroke="var(--surface-1)" stroke-width="2"
+       data-t="${h.l.link_label}: ${h.l.masked} — ${h.l.accounts} accounts, weight ${h.l.weight.toFixed(2)}"/>`).join('');
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:300px;overflow:visible">
+    ${edges}${nodes}${hubMarks}</svg>
+    <div class="legend" style="margin-top:8px">
+      <span><i class="swatch" style="border-radius:50%;background:var(--series-graph)"></i> account (size = value)</span>
+      <span><i class="swatch" style="background:var(--series-baseline)"></i> shared identifier</span>
+    </div>`;
+}
+
+async function selectAlert(id) {
+  selected = id;
+  document.querySelectorAll('#queue tr').forEach(tr =>
+    tr.setAttribute('aria-selected', tr.dataset.id === id ? 'true' : 'false'));
+  const el = document.getElementById('detail');
+  el.innerHTML = '<div class="empty">Building evidence…</div>';
+
+  const [a, w] = await Promise.all([
+    (await fetch('/api/alerts/' + id)).json(),
+    (await fetch('/api/alerts/' + id + '/whatif')).json(),
+  ]);
+  const v = VERDICTS[a.verdict] || { label: a.verdict, color: 'var(--text-muted)' };
+  const ev = a.evidence && !a.evidence.error ? a.evidence : null;
+  const maxC = Math.max(...(a.reasons || []).map(r => r.contribution), 0.001);
+
+  el.innerHTML = `
+    <h2>${a.payment_id}
+      <span class="chip" style="margin-left:8px"><i class="dot" style="background:${v.color}"></i>${v.label}</span></h2>
+    <p class="cap">${inr(a.amount_inr)} order · ${inr(a.exposure_inr)} at risk · day ${a.day} · account age ${a.account_age_days ?? '—'} days</p>
+    <p class="summary">${a.summary || ''}</p>
+    ${a.caveat ? `<p class="caveat">⚠ ${a.caveat}</p>` : ''}
+
+    <div class="whatif">
+      <div><div class="k">Score with graph</div><div class="v" style="color:var(--series-graph)">${w.with_graph.toFixed(3)}</div></div>
+      <div><div class="k">Without graph evidence</div><div class="v" style="color:var(--series-baseline)">${w.without_graph.toFixed(3)}</div></div>
+      <div><div class="k">Difference</div><div class="v">${w.delta >= 0 ? '+' : ''}${w.delta.toFixed(3)}</div></div>
+    </div>
+
+    <h2>Why it scored</h2>
+    <p class="cap">Each group replaced with a normal customer's values, then re-scored.</p>
+    ${(a.reasons || []).map(r => `
+      <div class="reason">
+        <div class="rt"><span><b>${r.label}</b> <span style="color:var(--text-muted)">${r.from_graph ? 'graph' : 'transaction'}</span></span>
+          <span class="amt">${r.contribution >= 0 ? '+' : ''}${r.contribution.toFixed(3)}</span></div>
+        <div class="rbar ${r.from_graph ? '' : 'tab'}" style="width:${Math.max(2, (r.contribution / maxC) * 100).toFixed(1)}%"></div>
+${r.generic ? '' : `<div class="detail">${r.detail}</div>`}
+      </div>`).join('') || '<p class="cap">No dominant driver.</p>'}
+
+    ${ev ? `
+      <h2 style="margin-top:22px">Evidence</h2>
+      <p class="attach">Cluster <b>${ev.cluster}</b> as of day ${ev.as_of_day} — ${ev.member_count} linked accounts.<br>Attached: ${ev.attachment}</p>
+      <div class="ev">
+        <div>${subgraph(ev)}</div>
+        <div>
+          <table>
+            <thead><tr><th>Linked by</th><th>Value</th><th class="num">Accounts</th><th class="num">Weight</th></tr></thead>
+            <tbody>${(ev.shared_identifiers || []).slice(0, 8).map(l => `<tr>
+              <td>${l.link_label}</td><td class="pid">${l.masked}</td>
+              <td class="num">${l.accounts}</td><td class="num">${l.pruned
+                ? '<span title="dropped as infrastructure: too many accounts share it" style="color:var(--text-muted)">pruned</span>'
+                : l.weight.toFixed(2)}</td></tr>`).join('')}</tbody>
+          </table>
+          <details open><summary>Accounts in this cluster</summary>
+            <table><thead><tr><th>Account</th><th class="num">Payments</th><th class="num">Value</th><th class="num">Age</th></tr></thead>
+            <tbody>${(ev.members || []).slice(0, 10).map(m => `<tr>
+              <td class="pid">${m.customer_id.slice(0, 12)}</td><td class="num">${m.payments}</td>
+              <td class="num">${inr(m.amount_inr)}</td><td class="num">${m.account_age_days}d</td></tr>`).join('')}</tbody></table>
+          </details>
+        </div>
+      </div>` : '<p class="cap" style="margin-top:20px">No linked-account evidence for this payment.</p>'}
+  `;
+  el.querySelectorAll('[data-t]').forEach(n => {
+    n.onmousemove = e => showTip(e, n.dataset.t);
+    n.onmouseleave = hideTip;
+  });
+}
+
+document.getElementById('filters').onclick = e => {
+  const b = e.target.closest('button'); if (!b) return;
+  document.querySelectorAll('#filters button').forEach(x => x.setAttribute('aria-pressed', x === b));
+  loadQueue(b.dataset.f);
+};
+
+loadSummary().then(() => loadQueue('')).then(async () => {
+  // Open on the highest-value alert that has linked-account evidence. Opening on
+  // the top row lands on a first-order mule with no cluster yet, which shows the
+  // tool at its least informative.
+  // Among graph-backed alerts, open the one where the graph changed the verdict
+  // most. Opening on the highest-value one often lands on a payment the baseline
+  // already caught, where the what-if panel reads +0.000 and demonstrates nothing.
+  const backed = await (await fetch('/api/alerts?limit=200&verdict=graph_backed')).json();
+  const best = (backed.alerts || [])
+    .map(a => ({ a, d: a.score - a.baseline_score }))
+    .sort((x, y) => y.d - x.d)[0];
+  const pick = best?.a?.payment_id
+    || document.querySelector('#queue tr[data-id]')?.dataset.id;
+  if (pick) selectAlert(pick);
+});
+</script>
+</body>
+</html>

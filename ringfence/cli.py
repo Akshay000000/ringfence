@@ -249,7 +249,10 @@ def cmd_explain(cfg, n_alerts: int = 12, n_false_positives: int = 4) -> None:
         lines += [heading, "", f"**{story['summary']}**", ""]
         for reason in story["reasons"]:
             tag = "graph" if reason["from_graph"] else "transaction"
-            lines.append(f"- `{reason['contribution']:+.3f}` **{reason['label']}** ({tag}) — {reason['detail']}")
+            body = "" if reason.get("generic") else f" — {reason['detail']}"
+            lines.append(f"- `{reason['contribution']:+.3f}` **{reason['label']}** ({tag}){body}")
+        if story.get("caveat"):
+            lines.append(f"\n> {story['caveat']}")
         lines.append("")
 
         evidence = None
@@ -286,6 +289,14 @@ def cmd_explain(cfg, n_alerts: int = 12, n_false_positives: int = 4) -> None:
     _log(f"explanations written to {REPORTS_DIR / 'explanations.md'}")
 
 
+def cmd_serve(cfg, host: str = "127.0.0.1", port: int = 8000) -> None:
+    """Run the analyst console."""
+    import uvicorn
+
+    _log(f"analyst console on http://{host}:{port} (first load builds the queue)")
+    uvicorn.run("ringfence.api.service:app", host=host, port=port, log_level="warning")
+
+
 def cmd_verify(cfg) -> None:
     from .evaluation.verify import run_all
 
@@ -308,6 +319,7 @@ COMMANDS = {
     "evaluate": cmd_evaluate,
     "explain": cmd_explain,
     "verify": cmd_verify,
+    "serve": cmd_serve,
 }
 
 
@@ -319,7 +331,9 @@ def main(argv: list[str] | None = None) -> int:
 
     cfg = load_config(args.config)
     ensure_dirs()
-    steps = list(COMMANDS) if args.command == "all" else [args.command]
+    # `all` is the reproducible pipeline; `serve` is a long-running process and
+    # is never part of it.
+    steps = [s for s in COMMANDS if s != "serve"] if args.command == "all" else [args.command]
     for step in steps:
         COMMANDS[step](cfg)
     return 0

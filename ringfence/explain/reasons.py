@@ -123,7 +123,7 @@ REASON_GROUPS: dict[str, dict] = {
         "evidence": [
             ("cl_customers", "sits in a cluster of {n:.0f} linked account(s)"),
             ("g_degree", "shares an identifier with {n:.0f} other account(s)"),
-            ("mean_edge_weight", "linked by high-confidence identifiers (mean weight {n:.2f})"),
+            ("mean_edge_weight", "linked by high-confidence identifiers (combined edge weight {n:.2f})"),
         ],
     },
     "cohort_synchrony": {
@@ -155,7 +155,7 @@ REASON_GROUPS: dict[str, dict] = {
         "label": "Cluster decline rate",
         "cols": ["cl_failure_rate", "clsig_decline"],
         "evidence": [
-            ("cl_failure_rate", "{n:.0%} of the cluster's attempts were declined"),
+            ("cl_failure_rate", "cluster decline rate {n:.0%}"),
         ],
     },
     "cluster_tempo": {
@@ -368,7 +368,11 @@ def _pick_evidence(row: pd.Series, spec: dict, reference=None) -> str | None:
     for rendered, z in candidates:
         if z >= EVIDENCE_Z_THRESHOLD:
             return rendered
-    return max(candidates, key=lambda pair: pair[1])[0]
+    best, best_z = max(candidates, key=lambda pair: pair[1])
+    # Quoting an unremarkable value as the reason for a high score is worse than
+    # quoting nothing: "0 attempts from this device in the past hour" reads as
+    # evidence of innocence. Below this floor, fall back to the group name.
+    return best if best_z >= 0.5 else None
 
 
 def _has_cluster(row: pd.Series) -> bool:
@@ -388,24 +392,48 @@ def narrate(
 ) -> dict:
     """Turn contributions into a sentence an analyst can act on or contest."""
     ranked = attributions.sort_values("contribution", ascending=False)
-    ranked = ranked[ranked["contribution"] >= min_contribution].head(top_k)
+    ranked = ranked[ranked["contribution"] >= min_contribution]
+
+    caveat = None
+    if not _has_cluster(row):
+        # No cluster resolved. Graph groups still produce a large "contribution"
+        # here, but it is an artefact, not evidence: occlusion replaces the
+        # missing cluster features with honest-population medians, which makes
+        # the payment look more normal and drops the score. Reporting that as a
+        # top reason tells an analyst the payment is suspicious *because* nothing
+        # is known about it, which is exactly backwards.
+        #
+        # So graph groups are dropped from the reasons and the gap is stated
+        # plainly instead. The score still stands; it simply rests on the
+        # transaction features alone.
+        ranked = ranked[~ranked["group"].isin(GRAPH_GROUPS)]
+        caveat = (
+            "No linked-account evidence was available at scoring time — this "
+            "score rests on transaction features alone."
+        )
+
+    ranked = ranked.head(top_k)
 
     reasons = []
+    seen_details: set[str] = set()
     for _, entry in ranked.iterrows():
         spec = REASON_GROUPS[entry["group"]]
         detail = _pick_evidence(row, spec, reference)
-        if detail is None and entry["group"] in GRAPH_GROUPS and not _has_cluster(row):
-            # The contribution is real -- occlusion swaps missing cluster features
-            # for the honest median, which moves the score -- but narrating it as
-            # "cluster tempo" implies evidence that does not exist. Say the true
-            # thing instead: this payment had no linked-account history to go on.
-            detail = "the absence of any linked-account history for this payment"
+        text = detail or spec["label"].lower()
+        if text in seen_details:
+            continue
+        seen_details.add(text)
         reasons.append(
             {
                 "group": entry["group"],
                 "label": spec["label"],
                 "contribution": round(float(entry["contribution"]), 4),
-                "detail": detail or spec["label"].lower(),
+                "detail": text,
+                # True when no evidence line cleared the abnormality floor and
+                # `detail` is just the group name restated. Surfaces suppress the
+                # detail line rather than printing "Payment context - payment
+                # context".
+                "generic": detail is None,
                 "from_graph": bool(entry["is_graph_group"]),
             }
         )
@@ -414,9 +442,11 @@ def narrate(
     if not reasons:
         summary = f"Scored {score:.3f} with no single dominant driver."
     else:
-        parts = "; ".join(r["detail"] for r in reasons)
+        specific = [r["detail"] for r in reasons if not r["generic"]]
+        parts = "; ".join(specific[:3]) if specific else ", ".join(
+            r["label"].lower() for r in reasons[:3]
+        )
         summary = f"Scored {score:.3f}. Driven by {parts}."
-
     graph_share = sum(r["contribution"] for r in reasons if r["from_graph"])
     total = sum(r["contribution"] for r in reasons) or 1.0
     return {
@@ -424,5 +454,6 @@ def narrate(
         "score": round(score, 4),
         "summary": summary,
         "reasons": reasons,
-        "graph_driven": graph_share / total > 0.5,
+        "caveat": caveat,
+        "graph_driven": bool(graph_share / total > 0.5),
     }

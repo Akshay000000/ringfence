@@ -6,3 +6,7 @@ networkx>=3.2
 PyYAML>=6.0
 # optional: parquet persistence. Without it the pipeline falls back to csv.gz.
 pyarrow>=14.0 ; python_version >= "3.9"
+
+# analyst console (python -m ringfence.cli serve)
+starlette>=0.37
+uvicorn>=0.27
