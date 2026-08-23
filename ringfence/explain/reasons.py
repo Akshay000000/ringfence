@@ -251,9 +251,10 @@ def attribute(arm, rows: pd.DataFrame, reference: pd.Series) -> pd.DataFrame:
 
     Vectorised over rows: one predict per group, not one per (row, group).
     """
+    from ..model.train import arm_matrix
+
     centers = reference_centers(reference)
-    X, _ = xy(rows, arm.use_graph)
-    X = X[arm.columns]
+    X = arm_matrix(arm, rows)
     base = arm.model.predict_proba(X)[:, 1]
 
     records = []

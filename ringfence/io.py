@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from .config import DATA_DIR
+from .config import data_dir
 
 try:  # pragma: no cover - environment dependent
     import pyarrow  # noqa: F401
@@ -22,7 +22,7 @@ _SUFFIX = {"parquet": ".parquet", "csv": ".csv.gz"}
 
 
 def table_path(name: str, directory: Path | None = None) -> Path:
-    return (directory or DATA_DIR) / f"{name}{_SUFFIX[_ENGINE]}"
+    return (directory or data_dir()) / f"{name}{_SUFFIX[_ENGINE]}"
 
 
 def write_table(df: pd.DataFrame, name: str, directory: Path | None = None) -> Path:

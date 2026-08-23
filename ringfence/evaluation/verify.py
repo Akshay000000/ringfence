@@ -80,10 +80,11 @@ def v3_label_permutation(splits: dict, cfg: Config, seed: int = 7) -> CheckResul
     train = splits["train"].copy()
     train["is_fraud"] = rng.permutation(train["is_fraud"].to_numpy())
 
+    from ..model.train import arm_matrix
+
     arm = train_arm("permuted", True, train, cfg)
     test = splits["test"]
-    X, _ = xy(test, True)
-    scores = arm.model.predict_proba(X[arm.columns])[:, 1]
+    scores = arm.model.predict_proba(arm_matrix(arm, test))[:, 1]
     y = test["is_fraud"].to_numpy().astype(int)
     pr_auc = float(average_precision_score(y, scores))
     base_rate = float(y.mean())

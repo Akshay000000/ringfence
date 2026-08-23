@@ -79,7 +79,9 @@ LINK_PRIORITY = [
 ]
 
 
-def _identifier_cluster_map(pairs: pd.DataFrame, clusters: pd.Series) -> pd.DataFrame:
+def _identifier_cluster_map(
+    pairs: pd.DataFrame, clusters: pd.Series, surviving: set[str] | None = None
+) -> pd.DataFrame:
     """value -> cluster, so a payment can be resolved by what it *touches*.
 
     This is the difference between a graph that works and one that does not. A
@@ -88,10 +90,23 @@ def _identifier_cluster_map(pairs: pd.DataFrame, clusters: pd.Series) -> pd.Data
     address it ships to is already a node, already inside a scored cluster.
     Resolving through the identifier is how an analyst actually works: "I have
     never seen this account, but I have seen this address."
+
+    `surviving` restricts the map to identifiers that actually survived hub
+    pruning, and it is not optional in practice.
+
+    Without it, an identifier the graph *deliberately discarded* still resolves
+    payments into clusters. On IEEE-CIS that meant every payment carrying a
+    gmail.com address -- a value shared by ~100,000 accounts and pruned as pure
+    infrastructure -- inherited whatever cluster gmail happened to point at.
+    Result: 100% of rows "in a cluster", a median cluster of 153 accounts, and
+    graph features that described nothing. The per-snapshot clusters were fine
+    all along; the resolution step was pouring them together afterwards.
     """
     if pairs is None or pairs.empty:
         return pd.DataFrame(columns=["value", "link_type", "cluster"])
     frame = pairs.loc[:, ["customer_id", "link_type", "value"]].drop_duplicates()
+    if surviving is not None:
+        frame = frame[frame["value"].isin(surviving)]
     frame["cluster"] = frame["customer_id"].map(clusters).fillna("")
     frame = frame[frame["cluster"] != ""]
     if frame.empty:
@@ -130,7 +145,8 @@ def snapshot_customer_features(
         cluster_stats = (
             scored.set_index("cluster") if not scored.empty else pd.DataFrame()
         )
-        return out, _identifier_cluster_map(pairs, clusters), cluster_stats
+        surviving = set(snapshot.identifier_weight)
+        return out, _identifier_cluster_map(pairs, clusters, surviving), cluster_stats
     return out
 
 

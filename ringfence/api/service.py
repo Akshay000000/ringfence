@@ -21,7 +21,7 @@ from starlette.applications import Starlette
 from starlette.responses import FileResponse, JSONResponse
 from starlette.routing import Route
 
-from ..config import REPORTS_DIR, load_config
+from ..config import load_config, reports_dir
 from ..explain.evidence import EvidenceBuilder
 from ..explain.reasons import attribute, build_reference, narrate
 from ..io import read_table
@@ -47,7 +47,7 @@ class State:
         self.arm = self.arms["graph"]
         self.baseline = self.arms["baseline"]
 
-        matrix = pd.read_pickle(REPORTS_DIR / "matrix.pkl")
+        matrix = pd.read_pickle(reports_dir() / "matrix.pkl")
         splits = split_frames(matrix, self.cfg)
         self.train = splits["train"]
         test = splits["test"].reset_index(drop=True)
@@ -89,7 +89,7 @@ class State:
         self._narrations: dict[str, dict] = {}
 
         self.results = {}
-        results_path = REPORTS_DIR / "results.json"
+        results_path = reports_dir() / "results.json"
         if results_path.exists():
             self.results = json.loads(results_path.read_text(encoding="utf-8"))
         self.ablation = _read_csv("ablation.csv")
@@ -115,7 +115,7 @@ class State:
 
 
 def _read_csv(name: str) -> list[dict]:
-    path = REPORTS_DIR / name
+    path = reports_dir() / name
     if not path.exists():
         return []
     return pd.read_csv(path).replace({np.nan: None}).to_dict(orient="records")

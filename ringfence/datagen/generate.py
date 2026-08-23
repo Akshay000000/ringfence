@@ -12,7 +12,7 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from ..config import Config, DATA_DIR, ensure_dirs, splits_from_config
+from ..config import Config, ensure_dirs, splits_from_config
 from ..io import write_table
 from . import entities as ent
 from . import population as pop_mod
@@ -135,6 +135,12 @@ def generate_corpus(cfg: Config, save: bool = True) -> dict[str, pd.DataFrame]:
 
 
 def summarise(payments: pd.DataFrame) -> pd.DataFrame:
+    # Real datasets carry fraud labels but no ring labels. Report that as "n/a"
+    # rather than silently printing a meaningless 1.
+    has_rings = (
+        "ring_id" in payments.columns
+        and payments.loc[payments["is_fraud"], "ring_id"].astype(str).str.len().gt(0).any()
+    )
     rows = []
     for split in ("train", "val", "test"):
         sub = payments[payments["split"] == split]
@@ -146,9 +152,9 @@ def summarise(payments: pd.DataFrame) -> pd.DataFrame:
                 "payments": len(sub),
                 "fraud": int(sub["is_fraud"].sum()),
                 "fraud_rate_%": round(100 * sub["is_fraud"].mean(), 3),
-                "rings": sub.loc[sub["is_fraud"], "ring_id"].nunique(),
-                "gmv_inr": round(sub.loc[sub["status"] == "captured", "amount"].sum() / 100),
-                "fraud_inr": round(
+                "rings": sub.loc[sub["is_fraud"], "ring_id"].nunique() if has_rings else "n/a",
+                "gmv": round(sub.loc[sub["status"] == "captured", "amount"].sum() / 100),
+                "fraud_value": round(
                     sub.loc[sub["is_fraud"] & (sub["status"] == "captured"), "amount"].sum() / 100
                 ),
             }

@@ -10,7 +10,32 @@ the graph earned its place with a held-out, leakage-audited ablation.
 
 ---
 
-## Headline result
+## Validated on two datasets, with opposite outcomes
+
+| | synthetic corpus | IEEE-CIS (Vesta) |
+|---|---|---|
+| what it is | 458k payments, ring-labelled, benign confounders planted | 590k **real** card-not-present transactions, 3.5% fraud |
+| what it can measure | ring detection against ground-truth ring membership | whether the mechanism transfers to real money |
+| graph vs baseline | **+24.5%** recall at precision 0.95 | **no measurable difference** (0.4 pooled sd, 5 seeds) |
+
+Both are in the repo, run by the same pipeline, and both are reported. The null
+result is the more useful of the two — it is what narrows the claim from "graphs
+improve fraud detection" to something defensible. See
+**[FINDINGS.md](FINDINGS.md) § F8**.
+
+> An identity graph pays for itself when the loss mechanism is **collusion
+> between accounts** and the merchant holds **raw identifiers** — device, card
+> token, delivery address, phone. It adds nothing measurable when the fraud is
+> single-actor, the identifiers are coarse proxies, or the entity aggregation has
+> already been engineered into the feature set.
+
+A merchant on raw Razorpay data is in the first situation. IEEE-CIS, whose
+`card1` is a card *group* and whose `addr1` is a billing *region*, is in the
+second.
+
+---
+
+## Headline result (synthetic corpus)
 
 Held-out **temporal** test split: 187,149 payments, 1,649 fraudulent (0.88%),
 42 abuse rings — **none of which appear in the training window.**
@@ -21,10 +46,10 @@ Same algorithm, same rows, same seed. One feature block apart.
 
 | precision target | baseline recall | **+ graph** | lift |
 |---|---|---|---|
-| 0.95 | 0.747 | **0.925** | **+23.9%** |
-| 0.90 | 0.754 | **0.933** | **+23.8%** |
-| 0.80 | 0.824 | **0.953** | +15.7% |
-| 0.60 | 0.913 | **0.972** | +6.4% |
+| 0.95 | 0.747 | **0.929** | **+24.5%** |
+| 0.90 | 0.754 | **0.940** | **+24.7%** |
+| 0.80 | 0.824 | **0.950** | +15.2% |
+| 0.60 | 0.913 | **0.965** | +5.6% |
 
 PR-AUC 0.9075 → **0.9744**.
 
@@ -50,8 +75,8 @@ Both arms pinned to precision 0.90:
 | archetype | baseline | + graph | lift |
 |---|---|---|---|
 | refund abuse | 0.428 | **0.922** | +0.494 |
-| bust-out / triangulation | 0.543 | **0.835** | +0.293 |
-| card testing | 0.973 | 0.981 | +0.008 |
+| bust-out / triangulation | 0.543 | **0.853** | +0.310 |
+| card testing | 0.973 | 0.986 | +0.013 |
 
 **The graph adds essentially nothing to card testing** — velocity counters
 already catch it at 97%, and a card-testing burst resolves in ~2 days, faster
@@ -131,6 +156,13 @@ merchant's objective. A blocked good customer costs the margin on the order
 *plus* a probability-weighted lifetime-value hit, review time is charged per
 alert, and the comparison baseline is do-nothing. The full cost curve and a
 sensitivity table across the most arguable assumption ship with the results.
+
+**Every ablation claim must clear its own noise floor.** A single-seed run on
+IEEE-CIS showed the graph ahead by +2.9%; refitting across five seeds showed the
+run-to-run standard deviation was three times that. Both apparent lifts were
+noise. `python -m ringfence.cli seedstudy` refits both arms across seeds and
+reports the gap in pooled standard deviations, and anything under 2 sd is written
+down as "no measurable difference".
 
 **Six verification checks** run in the pipeline, which refuses to report numbers
 if any fails:
@@ -285,8 +317,21 @@ incapable of offense:
 ```bash
 pip install -r requirements.txt
 
-make all            # data → features → train → evaluate → explain → verify
+make all            # synthetic: data → features → train → evaluate → explain → verify
 ```
+
+To reproduce the real-data run, put `train_transaction.csv` and
+`train_identity.csv` from
+[IEEE-CIS](https://www.kaggle.com/competitions/ieee-fraud-detection/data) under
+`data/raw/ieee/`, then:
+
+```bash
+python -m ringfence.cli --config configs/ieee_cis.yaml all
+python -m ringfence.cli --config configs/ieee_cis.yaml seedstudy
+```
+
+Each dataset writes to its own `data/<name>/` and `reports/<name>/`, so the two
+runs cannot overwrite each other's artefacts.
 
 Or stage by stage:
 
@@ -297,6 +342,7 @@ python -m ringfence.cli train      # both ablation arms (~20s)
 python -m ringfence.cli evaluate   # every number in this README
 python -m ringfence.cli explain    # analyst-readable alerts + evidence packets
 python -m ringfence.cli verify     # leakage and honesty checks
+python -m ringfence.cli seedstudy  # is the ablation gap bigger than seed noise?
 python -m ringfence.cli serve      # analyst console on :8000
 ```
 
@@ -313,6 +359,7 @@ ringfence/
   features/    tabular featuriser and strictly-causal graph featuriser
   model/       ablation arms, leakage allowlist
   evaluation/  metrics, rupee cost model, verification checks
+  datasets/    canonical payment schema + the IEEE-CIS adapter
   explain/     group-occlusion attribution and evidence subgraphs
   api/         read-only Starlette service + single-file analyst console
 configs/       one YAML controls every knob

@@ -10,6 +10,32 @@ import yaml
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_CONFIG = REPO_ROOT / "configs" / "default.yaml"
+
+# Each dataset gets its own workspace. Without this the synthetic and IEEE-CIS
+# runs write payments.csv.gz and results.json to the same paths and silently
+# overwrite each other -- which is how a "real data" number can end up being
+# reported from synthetic artefacts, or vice versa.
+_WORKSPACE = "synthetic"
+
+
+def use_workspace(name: str) -> None:
+    global _WORKSPACE
+    _WORKSPACE = name or "synthetic"
+
+
+def workspace() -> str:
+    return _WORKSPACE
+
+
+def data_dir() -> Path:
+    return REPO_ROOT / "data" / _WORKSPACE
+
+
+def reports_dir() -> Path:
+    return REPO_ROOT / "reports" / _WORKSPACE
+
+
+# Back-compat module attributes for anything still importing the constants.
 DATA_DIR = REPO_ROOT / "data"
 REPORTS_DIR = REPO_ROOT / "reports"
 
@@ -37,7 +63,9 @@ def load_config(path: str | Path | None = None) -> Config:
     path = Path(path) if path else DEFAULT_CONFIG
     with open(path, "r", encoding="utf-8") as handle:
         raw = yaml.safe_load(handle)
-    return Config(copy.deepcopy(raw))
+    cfg = Config(copy.deepcopy(raw))
+    use_workspace(cfg.get_path("dataset.name") or cfg.get_path("dataset.kind") or "synthetic")
+    return cfg
 
 
 @dataclass(frozen=True)
@@ -61,5 +89,5 @@ def splits_from_config(cfg: Config) -> dict[str, Split]:
 
 
 def ensure_dirs() -> None:
-    DATA_DIR.mkdir(parents=True, exist_ok=True)
-    REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+    data_dir().mkdir(parents=True, exist_ok=True)
+    reports_dir().mkdir(parents=True, exist_ok=True)

@@ -161,17 +161,107 @@ improve fraud detection," and it is the one the data supports.
 
 ---
 
+## F7. A pruned identifier was still resolving payments into clusters
+
+**Symptom.** On IEEE-CIS, **100% of transactions** resolved into a cluster — fraud
+and honest alike — and the median cluster held 153 accounts. Those are not rings,
+they are blobs, and a feature that is true of every row describes nothing.
+
+**The misleading part.** Snapshot-level clustering looked healthy. Sweeping the
+hub caps on a single snapshot gave a median cluster of 3 accounts and only ~42%
+of accounts clustered at all. The clusters were fine; something downstream was
+pouring them together.
+
+**Diagnosis.** The identifier→cluster map used by the new-account resolution path
+(F4) was built from *all* identifiers, including the hub identifiers that pruning
+had already thrown away. So `gmail.com` — a value shared by ~100,000 accounts,
+correctly discarded as infrastructure and contributing no edge to the graph —
+still mapped to whatever cluster it happened to touch. Every payment carrying a
+gmail address inherited it.
+
+The bug is the exact mirror of one already fixed in the console, where a pruned
+hub was drawn as an edge it never contributed. Same mistake, two layers apart.
+
+**Fix.** The map is built only from identifiers present in
+`snapshot.identifier_weight` — the set that survived pruning.
+
+**Effect.** Inherited resolution fell from 82% to 35% on IEEE-CIS, and from ~900
+to ~165 payments per day on synthetic.
+
+**And the synthetic headline went up, not down.** +23.9% → **+24.5%** at
+precision 0.95; bust-out recall 0.835 → 0.853. The leak had not been propping the
+result up — it had been feeding the graph junk edges through NAT hubs and weak
+domains. This is the reassuring direction to find a bug in, and it was worth
+re-running both datasets to check rather than assuming.
+
+---
+
+## F8. On real data the graph adds nothing measurable — and that is the finding
+
+RingFence was validated a second time on **IEEE-CIS** (Vesta), 590,540 real
+card-not-present transactions, 3.5% fraud, temporal split, same pipeline and same
+code — only a dataset adapter differs.
+
+**Result: no measurable lift.** Five seeds per arm:
+
+| condition | baseline PR-AUC | + graph | difference |
+|---|---|---|---|
+| all features | 0.4546 ± 0.0043 | 0.4561 ± 0.0041 | +0.3% — **0.4 pooled sd** |
+| without Vesta's entity counters | 0.2493 ± 0.0029 | 0.2523 ± 0.0223 | +1.2% — **0.2 pooled sd** |
+
+**How close this came to being reported as a win.** A single-seed run showed the
+graph ahead by **+2.9%**, and withholding Vesta's C-counters pushed it to
+**+6.3%** — a tidy story about the graph reproducing hand-engineered entity
+aggregation. Refitting across five seeds showed the run-to-run standard deviation
+was ±0.004 PR-AUC, three times the size of the "+2.9%". Both numbers were noise.
+`ringfence/evaluation/seed_study.py` now exists so no ablation claim in this repo
+can be made without clearing its own noise floor.
+
+**Why the graph does not help here.** Three reasons, and none of them is "graphs
+don't work":
+
+1. **The identifiers are proxies, not identities.** `card1` is a card *group* —
+   ~14,800 values across 590k transactions, ~40 transactions each — not a card.
+   `addr1` is a billing *region*: 437 distinct values, median 2 accounts but a
+   90th percentile of 696. Email is a *domain*, not an inbox; 59 values, median
+   154 accounts each. A device fingerprint exists on only 24% of rows. There is
+   no phone and no IP. Hub pruning correctly discards most of this, and what
+   survives is card and device.
+2. **The fraud is not collusive.** IEEE-CIS labels individual card-not-present
+   fraud. It has no ring labels because it largely has no rings. RingFence
+   detects *collusion structure*; asking it to improve single-actor fraud
+   detection is asking the wrong question of it.
+3. **The entity aggregation was already done.** Vesta's `C1`–`C14` are counts of
+   addresses and phones associated with a card — a hand-engineered version of
+   what the graph computes. The baseline already has them, and the honest
+   ablation gave them to both arms.
+
+**What this narrows the claim to.** Not "an identity graph improves fraud
+detection". It is:
+
+> An identity graph pays for itself when the loss mechanism is **collusion
+> between accounts** and the merchant holds **raw identifiers** — device, card
+> token, delivery address, phone. It adds nothing measurable when the fraud is
+> single-actor, the identifiers are coarse proxies, or the entity aggregation has
+> already been engineered into the feature set.
+
+That is a narrower claim than the synthetic result alone would support, and it is
+the one both datasets together actually justify. A merchant on raw Razorpay data
+is in the first situation. IEEE-CIS is in the second.
+
+---
+
 ## F6. Residual limitations
 
 Things a reviewer should push on, listed before they have to ask.
 
-1. **Synthetic data.** Ring topologies are ones I designed, so the model is
-   partly being graded on a world I built. Mitigations: benign confounders that
-   deliberately mimic ring structure; three archetypes with deliberately
-   different topologies; a bust-out archetype built to be adversarial to the
-   method (distinct card and device per mule, address as the only link). The
-   honest position is that this measures *method viability*, not production
-   accuracy.
+1. **Synthetic data carries the positive result.** Ring topologies are ones I
+   designed, so the +24.5% is measured on a world I built. Mitigations: benign
+   confounders that deliberately mimic ring structure; three archetypes with
+   deliberately different topologies; a bust-out archetype built to be
+   adversarial to the method. The real-data run (F8) is the counterweight, and
+   it returns a null — which is why the claim is scoped to collusion-with-raw-
+   identifiers rather than stated generally.
 2. **Oracle labels.** Training uses ground-truth `is_fraud`. Production labels
    are noisy and arrive late. Label maturity is modelled (F5/V5 below); label
    *noise* is not yet.

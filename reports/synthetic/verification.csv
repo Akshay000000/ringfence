@@ -4,4 +4,4 @@ V2 graph window is strictly earlier than the payments it scores,True,"window [as
 V4 test rings are novel,True,"42 test rings, 0 also active in training. Headline recall is reported on the novel cohort."
 V5 training labels had matured by as_of_day,True,0 training rows carry a label that did not exist at day 150
 V6 cluster statistics never reference an outcome column,True,no outcome column appears in cluster feature code
-V3 label permutation collapses the signal,True,permuted PR-AUC=0.0075 vs base rate=0.0088 (ratio 0.86x; pass if < 1.6x)
+V3 label permutation collapses the signal,True,permuted PR-AUC=0.0081 vs base rate=0.0088 (ratio 0.92x; pass if < 1.6x)

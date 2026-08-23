@@ -101,6 +101,14 @@ def per_archetype(frame: pd.DataFrame, scores: np.ndarray, threshold: float) -> 
     return pd.DataFrame(rows)
 
 
+def has_ring_labels(frame: pd.DataFrame) -> bool:
+    """Real datasets carry fraud labels but not ring membership."""
+    if "ring_id" not in frame.columns:
+        return False
+    fraud = frame.loc[frame["is_fraud"], "ring_id"].astype(str)
+    return bool(fraud.str.len().gt(0).any())
+
+
 def novel_vs_seen_rings(
     test: pd.DataFrame, train: pd.DataFrame, scores: np.ndarray, threshold: float
 ) -> pd.DataFrame:
@@ -109,6 +117,11 @@ def novel_vs_seen_rings(
     This is the number that predicts production behaviour. A model that only
     recognises rings it has already met is a lookup table.
     """
+    if not has_ring_labels(test):
+        return pd.DataFrame(
+            [{"cohort": "unavailable — dataset has no ring labels", "rings": 0,
+              "payments": int(test["is_fraud"].sum()), "recall": np.nan}]
+        )
     seen = set(train.loc[train["is_fraud"], "ring_id"].unique())
     df = test.copy()
     df["_flag"] = scores >= threshold

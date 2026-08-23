@@ -1,0 +1,74 @@
+# RingFence on IEEE-CIS (Vesta) — the real-data validation.
+#
+# Same pipeline, same code, different adapter. Everything that differs from the
+# synthetic run is here, and every difference is a property of the data rather
+# than a knob turned to make the numbers look better.
+seed: 20260905
+
+dataset:
+  kind: ieee_cis
+  raw_dir: data/raw/ieee
+
+simulation:
+  days: 182
+  as_of_day: 182
+  currency: USD
+  # ~182 days of real traffic. Same 2:1:2-ish temporal proportions as the
+  # synthetic run, so the comparison between the two is like-for-like.
+  train_days: [0, 119]
+  val_days:   [120, 149]
+  test_days:  [150, 181]
+
+graph:
+  # The link surface here is thinner and dirtier than the synthetic corpus, and
+  # the caps reflect that honestly:
+  #
+  #   card_fingerprint  card1·card2·card3·card5 — the strongest link available.
+  #   device_fingerprint  device string + OS + browser + screen. Present on only
+  #     ~24% of rows, and a generic combination like "Windows|Chrome|1920x1080"
+  #     is shared by thousands, so the cap does the discriminating.
+  #   shipping_address_hash  addr1 is a billing *region* code, not a street
+  #     address — roughly 330 values across 590k rows. Most will be pruned as
+  #     infrastructure, and that is correct: a region is not evidence.
+  #   email_root  a *domain*, not an inbox. gmail.com covers a third of the
+  #     dataset. Weak prior and a tight cap, so only rare domains ever link.
+  #
+  # No phone and no IP exist in this dataset at all.
+  link_types:
+    card_fingerprint:      {prior: 1.00, max_df: 40}
+    device_fingerprint:    {prior: 0.85, max_df: 60}
+    shipping_address_hash: {prior: 0.60, max_df: 60}
+    email_root:            {prior: 0.20, max_df: 25}
+  idf_min_weight: 0.08
+  max_identifier_degree: 500
+  louvain_resolution: 0.92
+  window_days: 45
+  snapshot_stride_days: 1
+
+model:
+  algorithm: hist_gradient_boosting
+  learning_rate: 0.06
+  max_iter: 400
+  max_leaf_nodes: 31
+  l2_regularization: 1.0
+  early_stopping: true
+  validation_fraction: null
+  # Base rate here is ~3.5%, roughly 4x the synthetic corpus, so the positive
+  # class needs less help.
+  class_weight_positive: 3.0
+
+# Real fraud labels ship with the dataset; there is no refund/dispute event
+# stream to model, so maturity filtering is inert here.
+label_maturity:
+  dispute_window_days: 0
+  return_window_days: 0
+
+costs:
+  # USD, and deliberately generic — the point of the real-data run is the
+  # ablation, not a rupee headline for someone else's merchant.
+  chargeback_fee_inr: 25
+  fraud_recovery_rate: 0.12
+  gross_margin: 0.28
+  false_block_churn_factor: 2.6
+  manual_review_cost_inr: 3
+  review_band: [0.35, 0.80]

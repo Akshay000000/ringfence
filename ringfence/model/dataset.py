@@ -31,8 +31,19 @@ FORBIDDEN = {
 EXTRA_GRAPH_COLS = ["g_in_cluster", "g_snapshot_lag", "g_match"]
 
 
-def feature_columns(use_graph: bool) -> tuple[list[str], list[str]]:
+def feature_columns(use_graph: bool, frame: pd.DataFrame | None = None) -> tuple[list[str], list[str]]:
+    """Model columns for an arm.
+
+    `src_*` columns are transaction-level features the source dataset already
+    ships -- on IEEE-CIS, Vesta's C-counters and D-timedeltas. They go to BOTH
+    arms, which matters: they are exactly the kind of feature a real fraud team
+    already has, and withholding them from the baseline would inflate the graph
+    lift by comparing against a strawman. Excluded from the graph block, so the
+    ablation still isolates the one thing under test.
+    """
     numeric = list(NUMERIC)
+    if frame is not None:
+        numeric += sorted(c for c in frame.columns if c.startswith("src_"))
     if use_graph:
         numeric += list(GRAPH_FEATURE_COLS) + list(EXTRA_GRAPH_COLS)
     return numeric, list(CATEGORICAL)
@@ -48,6 +59,7 @@ def assemble(
         "ring_id", "ring_type", "split", "label_available_day", "label_matured",
         "benign_cluster", "account_age_days",
     ]
+    keep += sorted(c for c in payments.columns if c.startswith("src_"))
     base = payments[[c for c in keep if c in payments.columns]].copy()
     merged = base.merge(tabular, on="payment_id", how="left", suffixes=("", "_tab"))
     graph_cols = ["payment_id", "cluster"] + [
@@ -74,14 +86,55 @@ def split_frames(matrix: pd.DataFrame, cfg: Config) -> dict[str, pd.DataFrame]:
     return out
 
 
-def xy(frame: pd.DataFrame, use_graph: bool) -> tuple[pd.DataFrame, np.ndarray]:
-    numeric, categorical = feature_columns(use_graph)
+# sklearn's HistGradientBoosting refuses a categorical with more than 255
+# levels. IEEE-CIS's billing region (addr1) has 330.
+MAX_CATEGORIES = 254
+OTHER = "__other__"
+NONE = "__none__"
+
+
+def build_category_vocab(frame: pd.DataFrame, use_graph: bool) -> dict[str, list[str]]:
+    """Fix each categorical's level set, from TRAINING data only.
+
+    The obvious fix for an over-cardinality column is "keep the commonest levels
+    and fold the rest into __other__". But computing that inside the transform
+    means the vocabulary is derived from whichever split is being transformed,
+    so the test set helps decide its own encoding. Mild, and still leakage. The
+    vocabulary is fitted once on train and carried on the trained arm.
+    """
+    _, categorical = feature_columns(use_graph, frame)
+    vocab: dict[str, list[str]] = {}
+    for col in categorical:
+        if col not in frame.columns:
+            continue
+        counts = frame[col].astype("string").fillna(NONE).value_counts()
+        levels = [str(v) for v in counts.index[:MAX_CATEGORIES]]
+        if len(counts) > MAX_CATEGORIES:
+            levels.append(OTHER)
+        vocab[col] = levels
+    return vocab
+
+
+def xy(
+    frame: pd.DataFrame,
+    use_graph: bool,
+    categories: dict[str, list[str]] | None = None,
+) -> tuple[pd.DataFrame, np.ndarray]:
+    numeric, categorical = feature_columns(use_graph, frame)
     cols = [c for c in numeric + categorical if c in frame.columns]
     assert not (set(cols) & FORBIDDEN), f"leak: {set(cols) & FORBIDDEN}"
     X = frame[cols].copy()
     for c in categorical:
-        if c in X.columns:
-            X[c] = X[c].astype("category")
+        if c not in X.columns:
+            continue
+        values = X[c].astype("string").fillna(NONE)
+        if categories and c in categories:
+            levels = categories[c]
+            if OTHER in levels:
+                values = values.where(values.isin(set(levels)), OTHER)
+            X[c] = pd.Categorical(values, categories=levels)
+        else:
+            X[c] = values.astype("category")
     for c in numeric:
         if c in X.columns:
             X[c] = pd.to_numeric(X[c], errors="coerce").astype("float64")

@@ -1,0 +1,7 @@
+link_type,rows_present,coverage_%,distinct_values
+card_fingerprint,590540,100.0,14845
+device_fingerprint,140589,23.81,9704
+shipping_address_hash,524834,88.87,437
+contact,0,0.0,0
+email_root,496084,84.01,59
+ip,0,0.0,0

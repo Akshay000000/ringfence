@@ -19,7 +19,7 @@ import time
 import numpy as np
 import pandas as pd
 
-from .config import REPORTS_DIR, ensure_dirs, load_config
+from .config import ensure_dirs, load_config, reports_dir
 from .io import read_table, write_table
 
 
@@ -28,14 +28,40 @@ def _log(msg: str) -> None:
 
 
 def cmd_data(cfg) -> None:
-    from .datagen.generate import generate_corpus, summarise
+    """Build the payment corpus for whichever dataset the config names.
 
-    _log("generating synthetic corpus")
-    out = generate_corpus(cfg)
-    summary = summarise(out["payments"])
+    `kind: synthetic` runs the generator; any other kind runs an adapter that
+    converts real data into the same canonical schema. The rest of the pipeline
+    does not know or care which it got -- that is the point.
+    """
+    from .datagen.generate import summarise
+
+    kind = cfg.get_path("dataset.kind", "synthetic")
+
+    if kind == "synthetic":
+        from .datagen.generate import generate_corpus
+
+        _log("generating synthetic corpus")
+        payments = generate_corpus(cfg)["payments"]
+    elif kind == "ieee_cis":
+        from .datasets import ieee_cis
+
+        _log("loading IEEE-CIS (Vesta) transactions")
+        payments = ieee_cis.load(cfg)
+        write_table(payments, "payments")
+        cover = ieee_cis.coverage(payments)
+        cover.to_csv(reports_dir() / "ieee_link_coverage.csv", index=False)
+        print()
+        print("Identity link coverage (what actually exists to join on):")
+        print(cover.to_string(index=False))
+    else:
+        raise SystemExit(f"unknown dataset kind: {kind}")
+
+    summary = summarise(payments)
     _log("corpus written")
+    print()
     print(summary.to_string(index=False))
-    summary.to_csv(REPORTS_DIR / "corpus_summary.csv", index=False)
+    summary.to_csv(reports_dir() / "corpus_summary.csv", index=False)
 
 
 def cmd_features(cfg) -> None:
@@ -76,7 +102,7 @@ def cmd_train(cfg) -> None:
     _log("training ablation arms")
     arms = train_all(splits, cfg)
     save_arms(arms)
-    matrix.to_pickle(REPORTS_DIR / "matrix.pkl")
+    matrix.to_pickle(reports_dir() / "matrix.pkl")
     _log("models written")
 
 
@@ -150,13 +176,13 @@ def cmd_evaluate(cfg) -> None:
         per.insert(0, "arm", name)
         per["threshold"] = round(thr, 4)
         matched.append(per)
-    matched_df = pd.concat(matched, ignore_index=True)
+    matched_df = pd.concat(matched, ignore_index=True) if matched else pd.DataFrame()
     tables["per_archetype_at_p90"] = matched_df
 
     ensure_dirs()
     for name, frame in tables.items():
-        frame.to_csv(REPORTS_DIR / f"{name}.csv", index=False)
-    with open(REPORTS_DIR / "results.json", "w", encoding="utf-8") as handle:
+        frame.to_csv(reports_dir() / f"{name}.csv", index=False)
+    with open(reports_dir() / "results.json", "w", encoding="utf-8") as handle:
         json.dump(report, handle, indent=2, default=float)
 
     print()
@@ -165,15 +191,23 @@ def cmd_evaluate(cfg) -> None:
     print("=" * 74)
     print(tables["ablation"].to_string(index=False))
     print()
-    print("--- per-archetype recall, both arms pinned to precision 0.90 ---")
-    pivot = matched_df.pivot(index="archetype", columns="arm", values="recall").round(4)
-    pivot["lift"] = (pivot["graph"] - pivot["baseline"]).round(4)
-    print(pivot.to_string())
+    if matched_df.empty or "archetype" not in matched_df.columns:
+        # Real datasets label fraud, not ring membership. Say so rather than
+        # inventing a breakdown.
+        print("--- per-archetype recall: unavailable (dataset has no ring labels) ---")
+    else:
+        print("--- per-archetype recall, both arms pinned to precision 0.90 ---")
+        pivot = matched_df.pivot(index="archetype", columns="arm", values="recall").round(4)
+        pivot["lift"] = (pivot["graph"] - pivot["baseline"]).round(4)
+        print(pivot.to_string())
 
     for name in arms:
+        per = tables[f"{name}_per_archetype"]
+        if not per.empty:
+            print()
+            print(f"--- {name} : per-archetype recall at cost-optimal threshold ---")
+            print(per.to_string(index=False))
         print()
-        print(f"--- {name} : per-archetype recall at cost-optimal threshold ---")
-        print(tables[f"{name}_per_archetype"].to_string(index=False))
         print(f"--- {name} : novel vs previously-seen rings ---")
         print(tables[f"{name}_novel_vs_seen"].to_string(index=False))
     print()
@@ -186,7 +220,7 @@ def cmd_evaluate(cfg) -> None:
             f"@cost-opt: P={c['precision']:.3f} R={c['recall']:.3f} "
             f"alerts={c['alert_rate']*100:.2f}% of traffic"
         )
-    _log(f"reports written to {REPORTS_DIR}")
+    _log(f"reports written to {reports_dir()}")
 
 
 def cmd_explain(cfg, n_alerts: int = 12, n_false_positives: int = 4) -> None:
@@ -275,8 +309,8 @@ def cmd_explain(cfg, n_alerts: int = 12, n_false_positives: int = 4) -> None:
             }
         )
 
-    (REPORTS_DIR / "explanations.md").write_text("\n".join(lines), encoding="utf-8")
-    with open(REPORTS_DIR / "explanations.json", "w", encoding="utf-8") as handle:
+    (reports_dir() / "explanations.md").write_text("\n".join(lines), encoding="utf-8")
+    with open(reports_dir() / "explanations.json", "w", encoding="utf-8") as handle:
         _json.dump(records, handle, indent=2, default=str)
 
     graph_driven = sum(1 for r in records if r["graph_driven"])
@@ -286,7 +320,30 @@ def cmd_explain(cfg, n_alerts: int = 12, n_false_positives: int = 4) -> None:
     print()
     for record in records[:3]:
         print(f"  {record['verdict']:<28} {record['summary']}")
-    _log(f"explanations written to {REPORTS_DIR / 'explanations.md'}")
+    _log(f"explanations written to {reports_dir() / 'explanations.md'}")
+
+
+def cmd_seedstudy(cfg) -> None:
+    """Refit both arms across seeds and check the gap against its noise floor."""
+    from .evaluation.seed_study import run as seed_run
+
+    matrix, splits = _matrix(cfg)
+    vesta = {c for c in matrix.columns if c.startswith("src_C")}
+    conditions = {"all_features": set()}
+    if vesta:
+        # IEEE-CIS ships Vesta's C-counters, which are literally counts of
+        # addresses and phones associated with a card -- entity aggregation the
+        # dataset already did. Withholding them from both arms asks whether the
+        # graph earns its place when that work is not pre-done.
+        conditions["without_source_entity_counters"] = vesta
+
+    _log(f"refitting both arms across seeds ({len(conditions)} condition(s)) — this is slow")
+    results = seed_run(cfg, splits, conditions=conditions)
+    results.to_csv(reports_dir() / "seed_study.csv", index=False)
+    pd.set_option("display.width", 220)
+    print()
+    print(results.to_string(index=False))
+    _log(f"seed study written to {reports_dir() / 'seed_study.csv'}")
 
 
 def cmd_serve(cfg, host: str = "127.0.0.1", port: int = 8000) -> None:
@@ -303,7 +360,7 @@ def cmd_verify(cfg) -> None:
     _, splits = _matrix(cfg)
     _log("running leakage and honesty checks")
     results = run_all(splits, cfg)
-    results.to_csv(REPORTS_DIR / "verification.csv", index=False)
+    results.to_csv(reports_dir() / "verification.csv", index=False)
     pd.set_option("display.width", 200)
     pd.set_option("display.max_colwidth", 110)
     print(results.to_string(index=False))
@@ -319,6 +376,7 @@ COMMANDS = {
     "evaluate": cmd_evaluate,
     "explain": cmd_explain,
     "verify": cmd_verify,
+    "seedstudy": cmd_seedstudy,
     "serve": cmd_serve,
 }
 
@@ -326,14 +384,18 @@ COMMANDS = {
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="ringfence")
     parser.add_argument("command", choices=list(COMMANDS) + ["all"])
-    parser.add_argument("--config", default=None)
+    parser.add_argument("--config", default=None,
+                        help="config YAML (default: configs/default.yaml)")
     args = parser.parse_args(argv)
 
     cfg = load_config(args.config)
     ensure_dirs()
     # `all` is the reproducible pipeline; `serve` is a long-running process and
     # is never part of it.
-    steps = [s for s in COMMANDS if s != "serve"] if args.command == "all" else [args.command]
+    # `all` is the reproducible pipeline. `serve` is long-running and
+    # `seedstudy` refits 20 models, so both are opt-in.
+    optional = {"serve", "seedstudy"}
+    steps = [s for s in COMMANDS if s not in optional] if args.command == "all" else [args.command]
     for step in steps:
         COMMANDS[step](cfg)
     return 0

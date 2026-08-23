@@ -16,8 +16,8 @@ import numpy as np
 import pandas as pd
 from sklearn.ensemble import HistGradientBoostingClassifier
 
-from ..config import Config, REPORTS_DIR
-from .dataset import xy
+from ..config import Config, reports_dir
+from .dataset import build_category_vocab, xy
 
 ARMS = {"baseline": False, "graph": True}
 
@@ -30,6 +30,7 @@ class TrainedArm:
     columns: list[str]
     n_train: int
     n_train_positive: int
+    categories: dict[str, list[str]] | None = None
 
 
 def _make_model(cfg: Config, seed: int) -> HistGradientBoostingClassifier:
@@ -53,7 +54,8 @@ def train_arm(
     train_df: pd.DataFrame,
     cfg: Config,
 ) -> TrainedArm:
-    X, y = xy(train_df, use_graph)
+    categories = build_category_vocab(train_df, use_graph)
+    X, y = xy(train_df, use_graph, categories)
     seed = int(cfg["seed"]) % (2**31)
     model = _make_model(cfg, seed)
 
@@ -68,13 +70,18 @@ def train_arm(
         columns=list(X.columns),
         n_train=len(X),
         n_train_positive=int(y.sum()),
+        categories=categories,
     )
 
 
+def arm_matrix(arm: TrainedArm, frame: pd.DataFrame) -> pd.DataFrame:
+    """Feature matrix in the arm's own column order and category vocabulary."""
+    X, _ = xy(frame, arm.use_graph, getattr(arm, "categories", None))
+    return X[arm.columns]
+
+
 def predict(arm: TrainedArm, frame: pd.DataFrame) -> np.ndarray:
-    X, _ = xy(frame, arm.use_graph)
-    X = X[arm.columns]
-    return arm.model.predict_proba(X)[:, 1]
+    return arm.model.predict_proba(arm_matrix(arm, frame))[:, 1]
 
 
 def train_all(splits: dict[str, pd.DataFrame], cfg: Config) -> dict[str, TrainedArm]:
@@ -91,11 +98,11 @@ def train_all(splits: dict[str, pd.DataFrame], cfg: Config) -> dict[str, Trained
 
 
 def save_arms(arms: dict[str, TrainedArm]) -> None:
-    REPORTS_DIR.mkdir(parents=True, exist_ok=True)
-    with open(REPORTS_DIR / "models.pkl", "wb") as handle:
+    reports_dir().mkdir(parents=True, exist_ok=True)
+    with open(reports_dir() / "models.pkl", "wb") as handle:
         pickle.dump(arms, handle)
 
 
 def load_arms() -> dict[str, TrainedArm]:
-    with open(REPORTS_DIR / "models.pkl", "rb") as handle:
+    with open(reports_dir() / "models.pkl", "rb") as handle:
         return pickle.load(handle)
