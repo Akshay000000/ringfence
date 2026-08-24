@@ -11,3 +11,11 @@ reports/**/models.pkl
 .ipynb_checkpoints/
 reports/**/explanations.json
 *.bundle
+
+# Raw Kaggle IEEE-CIS downloads. Not redistributable, ~710MB, and regenerable
+# by anyone with a Kaggle account. Kaggle unpacks each CSV into a folder of the
+# same name, so both the folder and the bare file are ignored.
+train_transaction.csv/
+train_identity.csv/
+train_transaction.csv
+train_identity.csv
