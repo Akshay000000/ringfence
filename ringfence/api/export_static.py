@@ -132,11 +132,14 @@ def build_console_page() -> Path:
         + '<script src="data/console-data.js"></script>\n'
         + source[index:]
     )
+    anchor = '<span class="defense">'
+    if anchor not in page:
+        raise RuntimeError("console.html has no defense badge to anchor the back-link on")
     page = page.replace(
-        '<span class="defense">Read-only, no block/refund endpoint exists</span>',
+        anchor,
         '<a href="index.html" class="defense" style="margin-left:auto;text-decoration:none">'
-        "&larr; overview</a>\n"
-        '    <span class="defense" style="margin-left:0">Read-only, no block or refund endpoint</span>',
+        "&larr; overview</a>\n    " + anchor,
+        1,
     )
 
     SITE_DIR.mkdir(parents=True, exist_ok=True)

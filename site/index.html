@@ -8,282 +8,749 @@
 <style>
   :root {
     color-scheme: light;
-    --surface: #fcfcfb; --plane: #f9f9f7;
-    --ink: #0b0b0b; --ink2: #52514e; --muted: #898781;
-    --grid: #e1e0d9; --border: rgba(11,11,11,0.10);
-    --graph: #2a78d6; --base: #eb6834;
-    --good: #0ca30c; --crit: #d03b3b; --warn: #fab219;
+    --surface:#fcfcfb; --plane:#f9f9f7; --raise:#ffffff;
+    --ink:#0b0b0b; --ink2:#52514e; --muted:#898781;
+    --grid:#e1e0d9; --border:rgba(11,11,11,.10); --hair:rgba(11,11,11,.06);
+    --graph:#2a78d6; --base:#eb6834;
+    --good:#0ca30c; --crit:#d03b3b; --warn:#fab219;
+    --glow:rgba(42,120,214,.12);
   }
-  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  @media (prefers-color-scheme:dark){ :root:not([data-theme=light]){
     color-scheme: dark;
-    --surface: #1a1a19; --plane: #0d0d0d;
-    --ink: #ffffff; --ink2: #c3c2b7; --muted: #898781;
-    --grid: #2c2c2a; --border: rgba(255,255,255,0.10);
-    --graph: #3987e5; --base: #d95926;
-  } }
-  :root[data-theme="dark"] {
+    --surface:#1a1a19; --plane:#0d0d0d; --raise:#212120;
+    --ink:#fff; --ink2:#c3c2b7; --muted:#898781;
+    --grid:#2c2c2a; --border:rgba(255,255,255,.10); --hair:rgba(255,255,255,.06);
+    --graph:#3987e5; --base:#d95926; --good:#0ca30c;
+    --glow:rgba(57,135,229,.16);
+  }}
+  :root[data-theme=dark]{
     color-scheme: dark;
-    --surface: #1a1a19; --plane: #0d0d0d;
-    --ink: #ffffff; --ink2: #c3c2b7; --muted: #898781;
-    --grid: #2c2c2a; --border: rgba(255,255,255,0.10);
-    --graph: #3987e5; --base: #d95926;
+    --surface:#1a1a19; --plane:#0d0d0d; --raise:#212120;
+    --ink:#fff; --ink2:#c3c2b7; --muted:#898781;
+    --grid:#2c2c2a; --border:rgba(255,255,255,.10); --hair:rgba(255,255,255,.06);
+    --graph:#3987e5; --base:#d95926; --good:#0ca30c;
+    --glow:rgba(57,135,229,.16);
   }
-  * { box-sizing: border-box; }
-  body { margin:0; background:var(--plane); color:var(--ink);
-    font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
-  .wrap { max-width: 940px; margin:0 auto; padding: 0 22px 90px; }
-  a { color: var(--graph); }
 
-  header.hero { padding: 68px 0 30px; }
-  .tag { font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); }
-  h1 { font-size:44px; margin:12px 0 6px; letter-spacing:-.025em; }
-  .lede { font-size:19px; color:var(--ink2); max-width:660px; margin:0 0 24px; }
-  .cta { display:flex; gap:10px; flex-wrap:wrap; }
-  .btn { display:inline-block; text-decoration:none; font-size:14px; font-weight:500;
-    padding:9px 16px; border-radius:8px; border:1px solid var(--border); color:var(--ink); }
-  .btn.primary { background:var(--ink); color:var(--surface); border-color:var(--ink); }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--plane);color:var(--ink);
+    font:16px/1.65 system-ui,-apple-system,"Segoe UI",sans-serif;
+    -webkit-font-smoothing:antialiased}
+  .wrap{max-width:1060px;margin:0 auto;padding:0 24px}
+  a{color:var(--graph)}
 
-  section { padding: 34px 0; border-top:1px solid var(--grid); }
-  h2 { font-size:13px; letter-spacing:.06em; text-transform:uppercase; color:var(--muted);
-    margin:0 0 16px; font-weight:600; }
-  h3 { font-size:20px; margin:0 0 10px; letter-spacing:-.01em; }
-  p { margin:0 0 14px; }
-  .note { color:var(--ink2); font-size:15px; }
+  /* nav */
+  nav{position:sticky;top:0;z-index:40;backdrop-filter:blur(12px);
+    background:color-mix(in srgb,var(--plane) 86%,transparent);
+    border-bottom:1px solid var(--hair)}
+  nav .wrap{display:flex;align-items:center;gap:22px;height:56px}
+  .brand{font-weight:680;letter-spacing:-.02em;font-size:16px;text-decoration:none;color:var(--ink)}
+  .brand i{display:inline-block;width:8px;height:8px;border-radius:50%;
+    background:var(--graph);margin-right:8px;vertical-align:1px}
+  nav .links{display:flex;gap:20px;margin-left:auto;font-size:13.5px}
+  nav .links a{color:var(--ink2);text-decoration:none}
+  nav .links a:hover{color:var(--ink)}
+  @media(max-width:720px){nav .links{display:none}}
 
-  .tiles { display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:12px; }
-  .tile { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:16px 18px; }
-  .tile .k { font-size:11.5px; text-transform:uppercase; letter-spacing:.05em; color:var(--ink2); }
-  .tile .v { font-size:30px; font-weight:650; margin-top:6px; letter-spacing:-.02em; }
-  .tile .f { font-size:12.5px; color:var(--muted); margin-top:4px; }
-  .up { color:var(--good); font-weight:600; }
+  /* hero */
+  .hero{padding:72px 0 20px;position:relative;overflow:hidden}
+  .hero::before{content:"";position:absolute;inset:0;pointer-events:none;
+    background:radial-gradient(680px 340px at 72% 28%,var(--glow),transparent 70%)}
+  .hero .wrap{position:relative;display:grid;grid-template-columns:1.02fr .98fr;
+    gap:44px;align-items:center}
+  @media(max-width:900px){.hero .wrap{grid-template-columns:1fr;gap:28px}}
+  .eyebrow{font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+  h1{font-size:clamp(38px,5.4vw,58px);line-height:1.04;letter-spacing:-.035em;margin:14px 0 0}
+  h1 .em{color:var(--graph)}
+  .lede{font-size:18.5px;color:var(--ink2);margin:18px 0 26px;max-width:520px}
+  .cta{display:flex;gap:10px;flex-wrap:wrap}
+  .btn{display:inline-flex;align-items:center;gap:8px;text-decoration:none;font-size:14px;
+    font-weight:520;padding:11px 18px;border-radius:9px;border:1px solid var(--border);
+    color:var(--ink);background:var(--surface);transition:transform .15s,border-color .15s}
+  .btn:hover{transform:translateY(-1px);border-color:var(--ink2)}
+  .btn.primary{background:var(--ink);color:var(--plane);border-color:var(--ink)}
 
-  table { width:100%; border-collapse:collapse; font-size:14.5px; margin:6px 0 16px; }
-  th { text-align:left; font-weight:500; color:var(--muted); font-size:11.5px;
-    text-transform:uppercase; letter-spacing:.05em; padding:7px 10px; border-bottom:1px solid var(--border); }
-  td { padding:9px 10px; border-bottom:1px solid var(--grid); font-variant-numeric:tabular-nums; }
-  td.num, th.num { text-align:right; }
-  tbody tr:last-child td { border-bottom:none; }
+  /* hero figure */
+  .stage{background:var(--surface);border:1px solid var(--border);border-radius:14px;
+    padding:18px 18px 14px;box-shadow:0 1px 2px var(--hair)}
+  .stage svg{width:100%;height:auto;display:block}
+  .stage .cap{display:flex;align-items:flex-start;gap:10px;margin-top:12px;
+    font-size:13px;color:var(--ink2);min-height:42px}
+  .stage .step{font-variant-numeric:tabular-nums;color:var(--muted);font-size:11.5px;
+    border:1px solid var(--border);border-radius:5px;padding:1px 7px;white-space:nowrap;flex:none}
+  .replay{margin-left:auto;flex:none;align-self:flex-start;background:none;border:1px solid var(--border);border-radius:6px;
+    color:var(--ink2);font:inherit;font-size:12px;padding:2px 9px;cursor:pointer}
 
-  .legend { display:flex; gap:18px; font-size:12.5px; color:var(--ink2); margin:0 0 14px; }
-  .legend span { display:inline-flex; align-items:center; gap:6px; }
-  .sw { width:10px; height:10px; border-radius:2px; }
+  .gnode{opacity:0;transition:opacity .35s ease,fill .5s ease}
+  .gnode.on{opacity:1}
+  .ghub{opacity:0;transition:opacity .4s ease}
+  .ghub.on{opacity:1}
+  .gedge{stroke-dasharray:200;stroke-dashoffset:200;transition:stroke-dashoffset .7s ease,stroke .5s}
+  .gedge.on{stroke-dashoffset:0}
+  .glabel{opacity:0;transition:opacity .4s ease}
+  .glabel.on{opacity:1}
 
-  .rows { display:flex; flex-direction:column; gap:14px; }
-  .rl { font-size:13px; color:var(--ink2); display:flex; justify-content:space-between; margin-bottom:5px; }
-  .rl b { color:var(--ink); font-variant-numeric:tabular-nums; }
-  .track { position:relative; height:22px; }
-  .bar { position:absolute; left:0; height:9px; border-radius:0 4px 4px 0; }
-  .bar.g { background:var(--graph); top:0; }
-  .bar.b { background:var(--base); top:12px; }
+  /* sections */
+  section{padding:56px 0;border-top:1px solid var(--grid)}
+  .lbl{display:flex;align-items:baseline;gap:12px;margin:0 0 20px}
+  .lbl .n{font-size:11.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+  .lbl h2{font-size:12.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);
+    margin:0;font-weight:620}
+  h3{font-size:clamp(21px,2.6vw,27px);line-height:1.25;letter-spacing:-.02em;margin:0 0 12px}
+  p{margin:0 0 14px}
+  .note{color:var(--ink2);font-size:15.5px}
+  .max{max-width:720px}
 
-  .split { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
-  @media (max-width:760px){ .split { grid-template-columns:1fr; } }
-  .card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:18px 20px; }
-  .card.win { border-left:3px solid var(--good); }
-  .card.null { border-left:3px solid var(--warn); }
-  .card h4 { margin:0 0 4px; font-size:15px; }
-  .card .sub { font-size:12.5px; color:var(--muted); margin:0 0 10px; }
+  /* the two-card contrast */
+  .vs{display:grid;grid-template-columns:1fr auto 1fr;gap:0;align-items:stretch;
+    border:1px solid var(--border);border-radius:12px;overflow:hidden;background:var(--surface)}
+  @media(max-width:780px){.vs{grid-template-columns:1fr}}
+  .vs .side{padding:22px 24px}
+  .vs .mid{width:1px;background:var(--border)}
+  @media(max-width:780px){.vs .mid{width:auto;height:1px}}
+  .vs .h{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:12px}
+  .rec{font-family:ui-monospace,Menlo,monospace;font-size:12.5px;line-height:1.9;color:var(--ink2)}
+  .rec b{color:var(--ink);font-weight:500}
+  .verdict{margin-top:14px;font-size:14px;font-weight:600}
+  .verdict.clean{color:var(--muted)}
+  .verdict.ring{color:var(--crit)}
 
-  .quote { border-left:3px solid var(--graph); padding:2px 0 2px 16px; margin:16px 0;
-    color:var(--ink2); font-size:15.5px; }
-  ol.log { padding-left:20px; }
-  ol.log li { margin-bottom:12px; color:var(--ink2); }
-  ol.log b { color:var(--ink); font-weight:600; }
-  code { font-family:ui-monospace,Menlo,monospace; font-size:13px;
-    background:var(--grid); padding:1px 5px; border-radius:4px; }
-  pre { background:var(--surface); border:1px solid var(--border); border-radius:8px;
-    padding:14px 16px; overflow-x:auto; font-size:12.5px; line-height:1.5; }
-  footer { padding-top:28px; border-top:1px solid var(--grid); color:var(--muted); font-size:13px; }
-  .pill { display:inline-block; font-size:11.5px; border:1px solid var(--border);
-    border-radius:999px; padding:3px 10px; color:var(--ink2); }
+  /* tiles */
+  .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+  .tile{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 20px}
+  .tile .k{font-size:11.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink2)}
+  .tile .v{font-size:clamp(26px,3.4vw,34px);font-weight:660;margin-top:6px;letter-spacing:-.025em}
+  .tile .f{font-size:12.5px;color:var(--muted);margin-top:5px}
+  .up{color:var(--good);font-weight:620}
+
+  /* cost bars */
+  .cost{display:flex;flex-direction:column;gap:14px;margin:8px 0 4px}
+  .cost .row .top{display:flex;justify-content:space-between;font-size:13.5px;margin-bottom:6px}
+  .cost .row .top b{font-variant-numeric:tabular-nums}
+  .cbar{height:26px;border-radius:5px;display:flex;align-items:center;padding:0 10px;
+    color:#fff;font-size:12px;font-weight:600;transition:width .9s cubic-bezier(.4,0,.2,1)}
+
+  /* ablation */
+  .legend{display:flex;gap:18px;font-size:12.5px;color:var(--ink2);margin:0 0 16px}
+  .legend span{display:inline-flex;align-items:center;gap:6px}
+  .sw{width:10px;height:10px;border-radius:2px}
+  .rows{display:flex;flex-direction:column;gap:15px}
+  .rl{font-size:13px;color:var(--ink2);display:flex;justify-content:space-between;margin-bottom:5px}
+  .rl b{color:var(--ink);font-variant-numeric:tabular-nums}
+  .track{position:relative;height:22px}
+  .bar{position:absolute;left:0;height:9px;border-radius:0 4px 4px 0;
+    transition:width .9s cubic-bezier(.4,0,.2,1)}
+  .bar.g{background:var(--graph);top:0}
+  .bar.b{background:var(--base);top:12px}
+
+  /* split cards */
+  .split{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:780px){.split{grid-template-columns:1fr}}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px 22px}
+  .card.win{border-top:3px solid var(--good)}
+  .card.null{border-top:3px solid var(--warn)}
+  .card h4{margin:0 0 3px;font-size:15.5px}
+  .card .sub{font-size:12.5px;color:var(--muted);margin:0 0 12px}
+  .big{font-size:22px;font-weight:660;letter-spacing:-.02em;display:block;margin-bottom:4px}
+
+  blockquote{border-left:3px solid var(--graph);padding:4px 0 4px 18px;margin:20px 0;
+    color:var(--ink2);font-size:16px}
+
+  /* how it works */
+  .steps{display:grid;gap:14px}
+  .step-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;
+    padding:20px 22px;display:grid;grid-template-columns:34px 1fr;gap:16px;align-items:start}
+  .step-card .num{width:28px;height:28px;border-radius:8px;background:var(--graph);color:#fff;
+    display:grid;place-items:center;font-size:13px;font-weight:660}
+  .step-card h4{margin:2px 0 6px;font-size:17px;letter-spacing:-.01em}
+
+  figure{margin:18px 0 0}
+  figure svg{width:100%;height:auto;max-width:100%;color:var(--ink2)}
+  figcaption{font-size:12.5px;color:var(--muted);margin-top:8px}
+
+  /* log */
+  .log{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media(max-width:780px){.log{grid-template-columns:1fr}}
+  .li{background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:17px 19px}
+  .li .t{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--crit);
+    font-weight:620;margin-bottom:6px}
+  .li .t.fix{color:var(--good)}
+  .li b{font-size:14.5px;display:block;margin-bottom:5px}
+  .li p{font-size:13.5px;color:var(--ink2);margin:0}
+
+  /* console preview */
+  .shot{border:1px solid var(--border);border-radius:12px;overflow:hidden;background:var(--surface);
+    box-shadow:0 2px 14px var(--hair)}
+  .shot .bar2{display:flex;align-items:center;gap:6px;padding:9px 12px;border-bottom:1px solid var(--border)}
+  .shot .dot{width:9px;height:9px;border-radius:50%;background:var(--grid)}
+  .shot .url{margin-left:10px;font-size:11.5px;color:var(--muted);font-family:ui-monospace,Menlo,monospace}
+  .shot img{display:block;width:100%}
+  .shot img.dk{display:none}
+  @media(prefers-color-scheme:dark){:root:not([data-theme=light]) .shot img.lt{display:none}
+    :root:not([data-theme=light]) .shot img.dk{display:block}}
+  :root[data-theme=dark] .shot img.lt{display:none}
+  :root[data-theme=dark] .shot img.dk{display:block}
+
+  table{width:100%;border-collapse:collapse;font-size:14.5px;margin:4px 0 8px}
+  th{text-align:left;font-weight:500;color:var(--muted);font-size:11.5px;text-transform:uppercase;
+    letter-spacing:.05em;padding:8px 10px;border-bottom:1px solid var(--border)}
+  td{padding:10px;border-bottom:1px solid var(--grid);font-variant-numeric:tabular-nums}
+  tbody tr:last-child td{border-bottom:none}
+
+  code{font-family:ui-monospace,Menlo,monospace;font-size:13px;background:var(--grid);
+    padding:1.5px 5px;border-radius:4px}
+  pre{background:var(--surface);border:1px solid var(--border);border-radius:10px;
+    padding:16px 18px;overflow-x:auto;font-size:12.5px;line-height:1.6}
+  .pill{display:inline-block;font-size:11.5px;border:1px solid var(--border);border-radius:999px;
+    padding:4px 11px;color:var(--ink2);margin:0 5px 6px 0}
+  footer{padding:34px 0 70px;color:var(--muted);font-size:13px;border-top:1px solid var(--grid)}
+
+  .js .reveal{opacity:0;transform:translateY(10px);transition:opacity .5s ease,transform .5s ease}
+  .js .reveal.in{opacity:1;transform:none}
+  @media(prefers-reduced-motion:reduce){
+    .js .reveal{opacity:1;transform:none;transition:none}
+    .gnode,.ghub,.gedge,.glabel{transition:none}
+    .bar,.cbar{transition:none}
+  }
 </style>
 </head>
 <body>
+
+<nav><div class="wrap">
+  <a class="brand" href="#top"><i></i>RingFence</a>
+  <div class="links">
+    <a href="#problem">Problem</a>
+    <a href="#results">Results</a>
+    <a href="#honesty">What failed</a>
+    <a href="#how">How</a>
+    <a href="console.html">Console</a>
+    <a href="https://github.com/Akshay000000/ringfence">GitHub</a>
+  </div>
+</div></nav>
+
+<header class="hero" id="top"><div class="wrap">
+  <div>
+    <div class="eyebrow">Razorpay AI Buildathon 2026 &middot; Track 02, AI Risk Manager</div>
+    <h1>Ten clean payments.<br><span class="em">One fraud ring.</span></h1>
+    <p class="lede">Abuse rings are invisible one transaction at a time. RingFence builds an
+      identity graph over payment traffic, finds the collusion inside it, and then tries hard to
+      prove the graph was not worth it.</p>
+    <div class="cta">
+      <a class="btn primary" href="console.html">Open the live console &rarr;</a>
+      <a class="btn" href="https://github.com/Akshay000000/ringfence">Source</a>
+    </div>
+  </div>
+
+  <div class="stage">
+    <svg viewBox="0 0 420 330" role="img" aria-label="Ten payment accounts, individually unremarkable, resolve into one fraud ring once a shared device and shared delivery address are drawn in.">
+      <defs>
+        <marker id="ah" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="5" markerHeight="5" orient="auto">
+          <path d="M0 0 L8 4 L0 8 z" fill="currentColor"/>
+        </marker>
+      </defs>
+      <g id="edges" stroke-width="1.4" fill="none"></g>
+      <g id="hubs"></g>
+      <g id="nodes"></g>
+      <g id="labels" font-size="11.5" fill="currentColor"></g>
+    </svg>
+    <div class="legend" style="margin:2px 0 0;font-size:12px">
+      <span><i class="sw" style="border-radius:50%;background:var(--graph)"></i> account</span>
+      <span><i class="sw" style="background:var(--base)"></i> shared identifier (device, delivery address)</span>
+    </div>
+    <div class="cap">
+      <span class="step" id="stepno">1 / 4</span>
+      <span id="capt">Ten payments arrive. Each one looks ordinary.</span>
+      <button class="replay" id="replay">Replay</button>
+    </div>
+  </div>
+</div></header>
+
 <div class="wrap">
 
-  <header class="hero">
-    <div class="tag">Razorpay AI Buildathon 2026 &middot; Track 02, AI Risk Manager</div>
-    <h1>RingFence</h1>
-    <p class="lede">Abuse rings are invisible one transaction at a time. RingFence builds an
-      identity graph over payment traffic, finds the collusion inside it, and then tries hard
-      to prove the graph was not worth it.</p>
-    <div class="cta">
-      <a class="btn primary" href="console.html">Open the analyst console</a>
-      <a class="btn" href="https://github.com/Akshay000000/ringfence">Source on GitHub</a>
-    </div>
-  </header>
+<section id="problem" class="reveal">
+  <div class="lbl"><span class="n">01</span><h2>The problem</h2></div>
+  <h3 class="max">A single card-testing payment is a &#8377;5 failed charge.<br>There is nothing in that row to learn from.</h3>
+  <p class="note max">There is everything to learn from the fact that the same device tried two hundred
+    of them. Here is the same payment, seen alone and seen in context.</p>
 
-  <section>
-    <h2>The problem</h2>
-    <h3>A single card-testing payment is a &#8377;5 failed charge. There is nothing in that row to learn from.</h3>
-    <p class="note">There is everything to learn from the fact that the same device tried two hundred of them.
-      Three loss classes look unrelated in a dashboard and are the same thing underneath.</p>
-    <table>
-      <thead><tr><th>Loss class</th><th>Per transaction</th><th>In aggregate</th></tr></thead>
-      <tbody>
-        <tr><td>Card testing</td><td>A few small failed payments</td><td>One device, 200 cards, 40 minutes</td></tr>
-        <tr><td>Refund abuse</td><td>A normal first order, later refunded</td><td>60 "new customers", one shipping address</td></tr>
-        <tr><td>Bust-out</td><td>A large captured payment</td><td>30 fresh accounts, one drop address, chargebacks at T+45d</td></tr>
-      </tbody>
-    </table>
-  </section>
-
-  <section>
-    <h2>What it saves the merchant</h2>
-    <div class="tiles">
-      <div class="tile"><div class="k">Total cost to merchant</div><div class="v">&#8377;6.2L</div>
-        <div class="f">from &#8377;41.4L doing nothing</div></div>
-      <div class="tile"><div class="k">Fraud caught</div><div class="v">92.2%</div>
-        <div class="f"><span class="up">+4.3 pts</span> over baseline</div></div>
-      <div class="tile"><div class="k">Good customers blocked</div><div class="v">49</div>
-        <div class="f">baseline blocks 564, 11&times; more</div></div>
-      <div class="tile"><div class="k">Recall at precision 0.95</div><div class="v">92.9%</div>
-        <div class="f"><span class="up">+24.5%</span> vs 74.7% baseline</div></div>
-    </div>
-    <p class="note" style="margin-top:16px">Held-out temporal split: 187,149 payments, 1,649 fraudulent,
-      42 abuse rings, none of which appear in the training window. A false positive is charged at the
-      order margin plus a lifetime-value hit, so the operating threshold is chosen to minimise rupees,
-      not to maximise F1.</p>
-  </section>
-
-  <section>
-    <h2>The ablation</h2>
-    <p class="note">Same algorithm, same rows, same seed. One feature block apart.</p>
-    <div class="legend">
-      <span><i class="sw" style="background:var(--graph)"></i> With identity graph</span>
-      <span><i class="sw" style="background:var(--base)"></i> Tabular baseline</span>
-    </div>
-    <div class="rows" id="ablation"></div>
-    <p class="note" style="margin-top:18px"><b>Where the lift comes from</b>, both arms pinned to precision 0.90:
-      refund abuse 0.43 &rarr; 0.92, bust-out 0.54 &rarr; 0.85, card testing 0.97 &rarr; 0.99.
-      The graph adds almost nothing to card testing, because velocity counters already catch it.
-      That is reported rather than buried.</p>
-  </section>
-
-  <section>
-    <h2>Validated twice, with opposite outcomes</h2>
-    <div class="split">
-      <div class="card win">
-        <h4>Synthetic corpus</h4>
-        <p class="sub">458k payments, ring-labelled, benign confounders planted</p>
-        <p class="note" style="margin:0"><b>+24.5%</b> recall at precision 0.95.
-          Survives a permutation test, 20% of fraud going unlabelled, and six leakage checks.</p>
+  <div class="vs">
+    <div class="side">
+      <div class="h">What a classifier sees</div>
+      <div class="rec">
+        amount &nbsp;&nbsp;<b>&#8377;3,342</b><br>
+        method &nbsp;&nbsp;<b>card</b><br>
+        account &nbsp;<b>327 days old</b><br>
+        velocity <b>1 in 24h</b><br>
+        declines <b>none</b>
       </div>
-      <div class="card null">
-        <h4>IEEE-CIS (Vesta)</h4>
-        <p class="sub">590k real card-not-present transactions, 3.5% fraud</p>
-        <p class="note" style="margin:0"><b>No measurable difference.</b>
-          0.4546 &plusmn; 0.0043 against 0.4561 &plusmn; 0.0041 across five seeds. That gap is
-          0.4 pooled standard deviations.</p>
+      <div class="verdict clean">Nothing anomalous. Approve.</div>
+    </div>
+    <div class="mid"></div>
+    <div class="side">
+      <div class="h">What the graph sees</div>
+      <div class="rec">
+        cluster &nbsp;<b>12 linked accounts</b><br>
+        device &nbsp;&nbsp;<b>1, shared by all 12</b><br>
+        address &nbsp;<b>1, shared by all 12</b><br>
+        email &nbsp;&nbsp;&nbsp;<b>3 roots, plus-aliased</b><br>
+        window &nbsp;&nbsp;<b>all inside 4 days</b>
+      </div>
+      <div class="verdict ring">Refund-abuse ring. Score 0.999.</div>
+    </div>
+  </div>
+  <p class="note max" style="margin-top:18px">Three loss classes look unrelated in a dashboard and are
+    the same thing underneath: the evidence lives between accounts, not inside them.</p>
+  <table>
+    <thead><tr><th>Loss class</th><th>Per transaction</th><th>In aggregate</th></tr></thead>
+    <tbody>
+      <tr><td>Card testing</td><td>A few small failed payments</td><td>One device, 200 cards, 40 minutes</td></tr>
+      <tr><td>Refund abuse</td><td>A normal first order, later refunded</td><td>60 "new customers", one shipping address</td></tr>
+      <tr><td>Bust-out</td><td>A large captured payment</td><td>30 fresh accounts, one drop address, chargebacks at T+45d</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section id="results" class="reveal">
+  <div class="lbl"><span class="n">02</span><h2>What it saves the merchant</h2></div>
+  <h3 class="max">&#8377;41.4L of fraud exposure, cut to &#8377;6.2L.</h3>
+  <p class="note max">Total cost is fraud let through, plus chargeback fees, plus the margin and
+    lifetime value destroyed by blocking good customers, plus analyst review time. The operating
+    threshold is chosen to minimise that number, not to maximise F1.</p>
+
+  <div class="cost" id="cost"></div>
+
+  <div class="tiles" style="margin-top:26px">
+    <div class="tile"><div class="k">Fraud caught</div><div class="v">92.2%</div>
+      <div class="f"><span class="up">+4.3 pts</span> over baseline</div></div>
+    <div class="tile"><div class="k">Precision</div><div class="v">96.9%</div>
+      <div class="f">baseline 72.0%</div></div>
+    <div class="tile"><div class="k">Good customers blocked</div><div class="v">49</div>
+      <div class="f">baseline blocks 564, 11&times; more</div></div>
+    <div class="tile"><div class="k">Alert rate</div><div class="v">0.84%</div>
+      <div class="f">of all traffic reaches a human</div></div>
+  </div>
+  <p class="note max" style="margin-top:18px">Held-out temporal split: 187,149 payments, 1,649
+    fraudulent, 42 abuse rings, <b>none of which appear in the training window</b>.</p>
+</section>
+
+<section id="ablation" class="reveal">
+  <div class="lbl"><span class="n">03</span><h2>Does the graph actually earn its place?</h2></div>
+  <p class="note max">Same algorithm, same rows, same seed. One feature block apart. That is the
+    entire experiment.</p>
+  <div class="legend">
+    <span><i class="sw" style="background:var(--graph)"></i> With identity graph</span>
+    <span><i class="sw" style="background:var(--base)"></i> Tabular baseline</span>
+  </div>
+  <div class="rows" id="ablationRows"></div>
+  <p class="note max" style="margin-top:22px"><b>Where the lift comes from</b>, both arms pinned to
+    precision 0.90: refund abuse 0.43 to 0.92, bust-out 0.54 to 0.85, card testing 0.97 to 0.99.
+    The graph adds almost nothing to card testing, because velocity counters already catch it.
+    That is reported rather than buried.</p>
+</section>
+
+<section id="honesty" class="reveal">
+  <div class="lbl"><span class="n">04</span><h2>Validated twice, with opposite outcomes</h2></div>
+  <div class="split">
+    <div class="card win">
+      <h4>Synthetic corpus</h4>
+      <p class="sub">458k payments, ring-labelled, benign confounders planted</p>
+      <span class="big" style="color:var(--good)">+24.5%</span>
+      <p class="note" style="margin:0;font-size:14.5px">recall at precision 0.95. Survives a
+        permutation test, 20% of fraud going unlabelled, and six leakage checks.</p>
+    </div>
+    <div class="card null">
+      <h4>IEEE-CIS (Vesta)</h4>
+      <p class="sub">590k real card-not-present transactions, 3.5% fraud</p>
+      <span class="big">No difference</span>
+      <p class="note" style="margin:0;font-size:14.5px">0.4546 &plusmn; 0.0043 against
+        0.4561 &plusmn; 0.0041 across five seeds. That gap is 0.4 pooled standard deviations.</p>
+    </div>
+  </div>
+  <p class="note max" style="margin-top:20px">A single-seed run had the graph ahead by +2.9% and I
+    nearly wrote it up. Refitting across five seeds showed run-to-run variance was three times the
+    size of the effect. There is now a <code>seedstudy</code> command, so no claim in the repo can be
+    made without clearing its own noise floor.</p>
+  <p class="note max">I then offered an explanation for the null, that IEEE-CIS fraud is single-actor
+    rather than collusive, and tested it. If true, the advantage should grow with how much
+    linked-account structure a payment sits in. Bucketed by cluster size there is no trend, and the
+    only significant result is the graph doing <b>worse</b> on small clusters. The explanation was
+    withdrawn.</p>
+  <blockquote>The graph produces a large, verified improvement on a benchmark whose ring structure I
+    constructed. It produces no measurable improvement on real data, and a targeted search for the
+    subgroup where it should have helped found nothing. Why it does not transfer is unresolved.</blockquote>
+</section>
+
+<section id="how" class="reveal">
+  <div class="lbl"><span class="n">05</span><h2>How it works</h2></div>
+  <h3 class="max">Three decisions carry the result.</h3>
+  <div class="steps">
+    <div class="step-card">
+      <div class="num">1</div>
+      <div>
+        <h4>Shared identifiers are graded, not binary</h4>
+        <p class="note" style="margin:0">Most identifier sharing is innocent. Families share cards, a
+          carrier NAT puts 400 customers on one IP, an apartment block shares a delivery address.
+          Edge weight is <code>prior[type] &times; log(N/df) / log(N)</code>, so a card on three
+          accounts is loud and an IP on four hundred is silent. Hub identifiers past a per-type cap
+          are dropped outright rather than down-weighted, because a carrier NAT block carries no
+          information at any weight and keeping it injects an 80,000-edge clique.</p>
+        <figure>
+          <svg viewBox="0 0 640 132" role="img" aria-label="A card shared by three accounts produces a strong edge; an IP shared by four hundred accounts is dropped as infrastructure before any edge is drawn.">
+            <g font-size="11.5" fill="currentColor">
+              <circle cx="60" cy="40" r="7" fill="var(--graph)"/>
+              <circle cx="60" cy="66" r="7" fill="var(--graph)"/>
+              <circle cx="60" cy="92" r="7" fill="var(--graph)"/>
+              <line x1="70" y1="40" x2="150" y2="66" stroke="var(--graph)" stroke-width="2.4"/>
+              <line x1="70" y1="66" x2="150" y2="66" stroke="var(--graph)" stroke-width="2.4"/>
+              <line x1="70" y1="92" x2="150" y2="66" stroke="var(--graph)" stroke-width="2.4"/>
+              <rect x="150" y="56" width="20" height="20" rx="4" fill="var(--base)"/>
+              <text x="182" y="62">card fingerprint, 3 accounts</text>
+              <text x="182" y="79" fill="var(--muted)">weight 0.94, edge kept</text>
+
+              <circle cx="400" cy="34" r="5" fill="currentColor" opacity=".35"/>
+              <circle cx="400" cy="52" r="5" fill="currentColor" opacity=".35"/>
+              <circle cx="400" cy="70" r="5" fill="currentColor" opacity=".35"/>
+              <circle cx="400" cy="88" r="5" fill="currentColor" opacity=".35"/>
+              <text x="392" y="108" text-anchor="middle" fill="var(--muted)" font-size="10.5">400 accounts</text>
+              <line x1="410" y1="61" x2="470" y2="61" stroke="currentColor" stroke-width="1.2"
+                    stroke-dasharray="4 4" opacity=".4"/>
+              <rect x="470" y="51" width="20" height="20" rx="4" fill="none" stroke="currentColor"
+                    stroke-width="1.4" stroke-dasharray="4 3" opacity=".5"/>
+              <text x="502" y="57">carrier NAT IP</text>
+              <text x="502" y="74" fill="var(--muted)">pruned, no edge drawn</text>
+            </g>
+          </svg>
+          <figcaption>Evidential strength falls with how many accounts touch an identifier. Past a
+            per-type cap the identifier is infrastructure, and is discarded rather than weighted down.</figcaption>
+        </figure>
       </div>
     </div>
-    <p class="note" style="margin-top:16px">A single-seed run had the graph ahead by +2.9% and I nearly wrote
-      it up. Refitting across five seeds showed run-to-run variance was three times the size of the effect.
-      There is now a <code>seedstudy</code> command so no claim in the repo can be made without clearing
-      its own noise floor.</p>
-    <p class="note">I then offered an explanation for the null, that IEEE-CIS fraud is single-actor rather
-      than collusive, and tested it. If true, the advantage should grow with how much linked-account
-      structure a payment sits in. Bucketed by cluster size, there is no trend, and the only significant
-      result is the graph doing <b>worse</b> on small clusters. The explanation was withdrawn.</p>
-    <div class="quote">The graph produces a large, verified improvement on a benchmark whose ring structure
-      I constructed. It produces no measurable improvement on real data, and a targeted search for the
-      subgroup where it should have helped found nothing. Why it does not transfer is unresolved.</div>
-  </section>
 
-  <section>
-    <h2>How it works</h2>
-    <p class="note">Three decisions carry the result.</p>
-    <h3>1. Shared identifiers are graded, not binary</h3>
-    <p class="note">Most identifier sharing is innocent: families share cards, a carrier NAT puts 400
-      customers on one IP, an apartment block shares a delivery address. Edge weight is
-      <code>prior[type] &times; log(N/df(v)) / log(N)</code>, so a card on 3 accounts is loud and an IP on
-      400 is silent. Hub identifiers past a per-type cap are dropped outright rather than down-weighted,
-      because a carrier NAT block carries no information at any weight and keeping it injects an
-      80,000-edge clique.</p>
-    <h3>2. Cohort synchrony separates a drop address from an apartment block</h3>
-    <p class="note">Both are twenty accounts on one address, structurally identical in a graph. What
-      separates them is when the accounts were created: a building's residents signed up over years, a
-      mule cohort signed up the same week. Without this feature the graph actively hurt bust-out recall.</p>
-    <h3>3. Resolve by identifier, not by customer</h3>
-    <p class="note">A mule's first payment has no history, so a customer-keyed lookup returns nothing for
-      exactly the transactions that matter most. Resolving through the drop address it ships to lifted
-      fraud coverage from ~40% to ~60% and flipped the ablation from &minus;4.6% to +23.9%.</p>
-  </section>
+    <div class="step-card">
+      <div class="num">2</div>
+      <div>
+        <h4>Cohort synchrony separates a drop address from an apartment block</h4>
+        <p class="note" style="margin:0">Both are twenty accounts on one address, structurally
+          identical in a graph. What separates them is <b>when the accounts were created</b>. A
+          building's residents signed up over years; a mule cohort signed up the same week. Without
+          this feature the graph actively hurt bust-out recall.</p>
+      </div>
+    </div>
 
-  <section>
-    <h2>The engineering log</h2>
-    <p class="note">Five times this build produced a number that looked fine and was wrong. All five are
-      in <a href="https://github.com/Akshay000000/ringfence/blob/main/FINDINGS.md">FINDINGS.md</a>.</p>
-    <ol class="log">
-      <li><b>A PR-AUC of 0.99 meant the benchmark was broken</b>, not that the model was good. Every ring
-        account was freshly minted and almost every honest account was aged, so account age alone
-        separated them.</li>
-      <li><b>The graph made the model worse</b> at first. Snapshots ran on a 5-day stride and card-testing
-        rings live 2 days, so the graph block became a tenure signal that anti-correlated with fraud.</li>
-      <li><b>Louvain at resolution above 1 shatters cliques</b> into singletons, and a ring sharing one drop
-        address is a clique. The tell was a recall cliff at exactly the code's clustering cutoff.</li>
-      <li><b>A pruned identifier was still resolving payments into clusters.</b> Every payment carrying a
-        gmail address inherited whatever cluster gmail touched: 100% of rows "in a cluster", median cluster
-        of 153 accounts. Fixing it <em>raised</em> the headline.</li>
-      <li><b>I tested my own explanation for the null and withdrew it.</b> The comfortable story did not
-        survive contact with the data.</li>
-    </ol>
-  </section>
+    <div class="step-card">
+      <div class="num">3</div>
+      <div>
+        <h4>Resolve by identifier, not by customer</h4>
+        <p class="note" style="margin:0">A mule's first payment has no history, so a customer-keyed
+          lookup returns nothing for exactly the transactions that matter most. Resolving through the
+          drop address it ships to lifted fraud coverage from about 40% to 60%, and flipped the
+          ablation from &minus;4.6% to +23.9%. This one change is the difference between the method
+          working and not.</p>
+      </div>
+    </div>
+  </div>
 
-  <section>
-    <h2>Every alert is contestable</h2>
-    <p class="note">A score is not actionable, and "the model said so" is not something to put in front of
-      a merchant whose payment was blocked. Each alert carries a reason and the evidence behind it.
-      Reasons come from group occlusion rather than SHAP: each feature group is replaced with what a normal
-      customer looks like and the payment re-scored, which yields a real counterfactual on the real model.</p>
-    <pre>Scored 1.000. Driven by the whole cluster transacted inside 4 days.
+  <figure style="margin-top:30px">
+    <svg viewBox="0 0 900 250" role="img" aria-label="Pipeline: two data sources converge on one canonical schema, split into a tabular featuriser and an identity graph, recombine at the risk model where the ablation is measured, then flow to a cost-weighted decision and an evidence layer.">
+      <defs>
+        <marker id="a2" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto">
+          <path d="M0 0 L8 4 L0 8 z" fill="currentColor"/>
+        </marker>
+      </defs>
+      <g font-size="11.5" fill="currentColor" stroke-linecap="round">
+        <rect x="8" y="14" width="150" height="38" rx="7" fill="none" stroke="currentColor" stroke-width="1.3"/>
+        <text x="83" y="31" text-anchor="middle">synthetic generator</text>
+        <text x="83" y="45" text-anchor="middle" fill="var(--muted)" font-size="10.5">ring-labelled</text>
 
-  cluster cl_239 as of day 134 (12 linked accounts)
-  linked by:
-    device                     dev...bWc   12 accounts   weight 0.66
-    email (alias-normalised)   m1w...com    3 accounts   weight 0.58
-    shipping address           add...Zw2   12 accounts   weight 0.58
-    IP address                 97....239   12 accounts   weight 0.27</pre>
-    <p class="note">Twelve "different customers", one handset, one delivery address, and three emails
-      collapsing to the same inbox once plus-aliasing is normalised. The console ships the worst false
-      positives too, because a model that can only explain its wins is not auditable.</p>
-    <div class="cta"><a class="btn primary" href="console.html">Open the console</a></div>
-  </section>
+        <rect x="8" y="70" width="150" height="38" rx="7" fill="none" stroke="currentColor" stroke-width="1.3"/>
+        <text x="83" y="87" text-anchor="middle">IEEE-CIS adapter</text>
+        <text x="83" y="101" text-anchor="middle" fill="var(--muted)" font-size="10.5">real Vesta payments</text>
 
-  <section>
-    <h2>Defense only</h2>
-    <p class="note">The track disqualifies anything offense-capable, and this is enforced by architecture
-      rather than promised. The service consumes transaction records and emits risk scores and evidence.
-      Every route is GET. There is no endpoint that blocks a payment, issues a refund, or mutates an
-      account. The generator produces labelled abuse patterns for evaluation only: card fingerprints are
-      opaque random tokens with no BIN structure, and no real cardholder data enters the system.</p>
-    <p><span class="pill">17 regression tests</span> <span class="pill">6 verification checks</span>
-      <span class="pill">reproducible from a fixed seed</span> <span class="pill">read-only by construction</span></p>
-  </section>
+        <line x1="158" y1="33" x2="204" y2="55" stroke="currentColor" stroke-width="1.3" marker-end="url(#a2)"/>
+        <line x1="158" y1="89" x2="204" y2="67" stroke="currentColor" stroke-width="1.3" marker-end="url(#a2)"/>
 
-  <footer>
-    Built by Akshay Sriram for the Razorpay AI Buildathon 2026.
-    Every figure on this page is regenerated by <code>make all</code> from a clean checkout.
-    IEEE-CIS data is used under the Kaggle competition terms and is not redistributed here.
-  </footer>
+        <rect x="210" y="42" width="132" height="38" rx="7" fill="none" stroke="var(--graph)" stroke-width="1.6"/>
+        <text x="276" y="59" text-anchor="middle">canonical schema</text>
+        <text x="276" y="73" text-anchor="middle" fill="var(--muted)" font-size="10.5">one contract</text>
+
+        <line x1="342" y1="52" x2="392" y2="34" stroke="currentColor" stroke-width="1.3" marker-end="url(#a2)"/>
+        <line x1="342" y1="70" x2="392" y2="104" stroke="currentColor" stroke-width="1.3" marker-end="url(#a2)"/>
+
+        <rect x="398" y="10" width="140" height="42" rx="7" fill="none" stroke="currentColor" stroke-width="1.3"/>
+        <text x="468" y="27" text-anchor="middle">tabular featuriser</text>
+        <text x="468" y="41" text-anchor="middle" fill="var(--muted)" font-size="10.5">velocity, tenure, amount</text>
+
+        <rect x="398" y="86" width="140" height="42" rx="7" fill="none" stroke="currentColor" stroke-width="1.3"/>
+        <text x="468" y="103" text-anchor="middle">identity graph</text>
+        <text x="468" y="117" text-anchor="middle" fill="var(--muted)" font-size="10.5">IDF-weighted, causal</text>
+
+        <line x1="538" y1="31" x2="588" y2="58" stroke="currentColor" stroke-width="1.3" marker-end="url(#a2)"/>
+        <line x1="538" y1="107" x2="588" y2="80" stroke="currentColor" stroke-width="1.3" marker-end="url(#a2)"/>
+
+        <rect x="594" y="48" width="120" height="42" rx="7" fill="none" stroke="var(--graph)" stroke-width="1.6"/>
+        <text x="654" y="65" text-anchor="middle">risk model</text>
+        <text x="654" y="79" text-anchor="middle" fill="var(--muted)" font-size="10.5">two arms, one apart</text>
+        <text x="654" y="112" text-anchor="middle" fill="var(--graph)" font-size="10.5">the ablation is measured here</text>
+
+        <line x1="714" y1="60" x2="762" y2="42" stroke="currentColor" stroke-width="1.3" marker-end="url(#a2)"/>
+        <line x1="714" y1="78" x2="762" y2="104" stroke="currentColor" stroke-width="1.3" marker-end="url(#a2)"/>
+
+        <rect x="768" y="20" width="124" height="42" rx="7" fill="none" stroke="currentColor" stroke-width="1.3"/>
+        <text x="830" y="37" text-anchor="middle">cost-weighted</text>
+        <text x="830" y="51" text-anchor="middle" fill="var(--muted)" font-size="10.5">allow / review / block</text>
+
+        <rect x="768" y="86" width="124" height="42" rx="7" fill="none" stroke="currentColor" stroke-width="1.3"/>
+        <text x="830" y="103" text-anchor="middle">evidence layer</text>
+        <text x="830" y="117" text-anchor="middle" fill="var(--muted)" font-size="10.5">reasons + subgraph</text>
+
+        <line x1="276" y1="80" x2="276" y2="176" stroke="currentColor" stroke-width="1.2" stroke-dasharray="4 4" opacity=".55"/>
+        <text x="286" y="150" fill="var(--muted)" font-size="10.5">a payment on day d sees only days before d</text>
+        <line x1="8" y1="176" x2="892" y2="176" stroke="currentColor" stroke-width="1" opacity=".25"/>
+        <text x="8" y="196" fill="var(--muted)" font-size="10.5">train 0 to 89</text>
+        <text x="330" y="196" fill="var(--muted)" font-size="10.5">validate 90 to 109</text>
+        <text x="600" y="196" fill="var(--muted)" font-size="10.5">test 110 to 149, rings never seen in training</text>
+        <line x1="8" y1="206" x2="320" y2="206" stroke="var(--muted)" stroke-width="3"/>
+        <line x1="330" y1="206" x2="590" y2="206" stroke="var(--muted)" stroke-width="3" opacity=".6"/>
+        <line x1="600" y1="206" x2="892" y2="206" stroke="var(--graph)" stroke-width="3"/>
+      </g>
+    </svg>
+    <figcaption>Both datasets run the same pipeline; only the adapter differs. The split is temporal,
+      so no transaction is ever described by a graph that contains it.</figcaption>
+  </figure>
+</section>
+
+<section id="log" class="reveal">
+  <div class="lbl"><span class="n">06</span><h2>Five times a number looked fine and was wrong</h2></div>
+  <p class="note max">Each of these is written up in
+    <a href="https://github.com/Akshay000000/ringfence/blob/main/FINDINGS.md">FINDINGS.md</a> with the
+    diagnostic reasoning, not just the fix.</p>
+  <div class="log">
+    <div class="li"><div class="t">Broken benchmark</div>
+      <b>A PR-AUC of 0.99</b>
+      <p>Not a good model, a broken benchmark. Every ring account was freshly minted and almost every
+        honest account was aged, so account age alone separated them.</p></div>
+    <div class="li"><div class="t">Wrong direction</div>
+      <b>The graph made the model worse</b>
+      <p>Snapshots ran on a 5-day stride and card-testing rings live 2 days, so the graph block became
+        a tenure signal that anti-correlated with fraud.</p></div>
+    <div class="li"><div class="t">Config destroying signal</div>
+      <b>Louvain was shattering the cliques</b>
+      <p>At resolution above 1 it splits a clique into singletons, and a ring sharing one drop address
+        is a clique. The tell was a recall cliff at exactly the code's cutoff constant.</p></div>
+    <div class="li"><div class="t">Silent leak</div>
+      <b>A pruned identifier still resolved clusters</b>
+      <p>Every payment carrying a gmail address inherited whatever cluster gmail touched: 100% of rows
+        "in a cluster", median cluster of 153 accounts. Fixing it <i>raised</i> the headline.</p></div>
+    <div class="li"><div class="t fix">Caught before publishing</div>
+      <b>A +2.9% lift that was seed noise</b>
+      <p>Refitting across five seeds showed run-to-run variance was three times the effect. Nearly
+        became a reported result.</p></div>
+    <div class="li"><div class="t fix">Self-refuted</div>
+      <b>My explanation for the null did not survive</b>
+      <p>I predicted the advantage should grow with cluster size, tested it, found no trend, and
+        withdrew the explanation rather than keeping the comfortable story.</p></div>
+  </div>
+</section>
+
+<section id="console" class="reveal">
+  <div class="lbl"><span class="n">07</span><h2>Every alert is contestable</h2></div>
+  <h3 class="max">"The model said so" is not something to put in front of a merchant whose payment you just blocked.</h3>
+  <p class="note max">Reasons come from group occlusion rather than SHAP: each feature group is
+    replaced with what a normal customer looks like and the payment re-scored, which gives a real
+    counterfactual on the real model. Every alert also carries the subgraph it came from, with
+    identifier values masked so the packet can travel into a ticket.</p>
+
+  <div class="shot">
+    <div class="bar2"><i class="dot"></i><i class="dot"></i><i class="dot"></i>
+      <span class="url">ringfence &middot; analyst console</span></div>
+    <img class="lt" src="assets/console-light.png" alt="The analyst console: alert queue ranked by money at risk, with reasons, a what-if panel and an evidence subgraph." loading="lazy">
+    <img class="dk" src="assets/console-dark.png" alt="The analyst console in dark mode." loading="lazy">
+  </div>
+  <p class="note max" style="margin-top:18px">The queue ranks by <b>money at risk</b>, not raw score.
+    Sorting on score alone returned 392 card-testing probes out of 400, every one tied at 0.9998 and
+    worth about five rupees: a correct ranking and a useless product. The console also ships the worst
+    false positives, because a model that can only explain its wins is not auditable.</p>
+  <div class="cta" style="margin-top:18px"><a class="btn primary" href="console.html">Open the console &rarr;</a></div>
+</section>
+
+<section id="build" class="reveal">
+  <div class="lbl"><span class="n">08</span><h2>What was built</h2></div>
+  <div class="tiles">
+    <div class="tile"><div class="k">Pipeline stages</div><div class="v">9</div>
+      <div class="f">data, features, train, evaluate, explain, verify, seedstudy, labelnoise, site</div></div>
+    <div class="tile"><div class="k">Regression tests</div><div class="v">17</div>
+      <div class="f">each encodes a bug that actually happened</div></div>
+    <div class="tile"><div class="k">Verification checks</div><div class="v">6</div>
+      <div class="f">the pipeline refuses to report if any fails</div></div>
+    <div class="tile"><div class="k">Datasets validated</div><div class="v">2</div>
+      <div class="f">one synthetic, one real, both reported</div></div>
+  </div>
+  <p class="note max" style="margin-top:20px"><b>No GNN, no LLM, no SHAP.</b> Each was considered and
+    rejected on grounds worth defending. A graph neural network overfits 4,500 positives and leaks
+    future edges through neighbourhood aggregation, which would have destroyed the causality
+    guarantees. An LLM is slower, costlier and non-deterministic for detection over structured data
+    at scale. Classical graph algorithms engineer the features; gradient boosting makes the call.</p>
+  <p style="margin-top:14px">
+    <span class="pill">Python</span><span class="pill">scikit-learn</span><span class="pill">NetworkX</span>
+    <span class="pill">SciPy sparse</span><span class="pill">pandas</span><span class="pill">Starlette</span>
+    <span class="pill">Playwright</span>
+  </p>
+</section>
+
+<section id="defense" class="reveal">
+  <div class="lbl"><span class="n">09</span><h2>Defense only</h2></div>
+  <p class="note max">The track disqualifies anything offense-capable, and this is enforced by
+    architecture rather than promised. The service consumes transaction records and emits risk scores
+    and evidence. <b>Every route is GET.</b> There is no endpoint that blocks a payment, issues a
+    refund, or mutates an account. The generator produces labelled abuse patterns for evaluation only:
+    card fingerprints are opaque random tokens with no BIN structure, and no real cardholder data
+    enters the system.</p>
+</section>
+
+<footer>
+  Built by Akshay Sriram for the Razorpay AI Buildathon 2026.
+  Every figure on this page is regenerated by <code>make all</code> from a clean checkout at a fixed
+  seed. IEEE-CIS data is used under the Kaggle competition terms and is not redistributed here.
+</footer>
 </div>
 
 <script>
-const ABLATION = [
-  { label: 'precision &ge; 0.95', graph: 0.9290, base: 0.7465 },
-  { label: 'precision &ge; 0.90', graph: 0.9400, base: 0.7538 },
-  { label: 'precision &ge; 0.80', graph: 0.9497, base: 0.8241 },
-  { label: 'precision &ge; 0.60', graph: 0.9648, base: 0.9133 },
+document.documentElement.classList.add('js');
+/* ---------- hero: a ring resolving out of ten ordinary payments ---------- */
+const CX = 210, CY = 150, R = 104, N = 10;
+const pos = Array.from({length: N}, (_, i) => {
+  const a = (i / N) * Math.PI * 2 - Math.PI / 2;
+  return { x: CX + R * Math.cos(a), y: CY + R * Math.sin(a) };
+});
+const HUBS = [{ x: CX - 26, y: CY, t: 'device' }, { x: CX + 26, y: CY, t: 'address' }];
+
+const gEdges = document.getElementById('edges');
+const gHubs  = document.getElementById('hubs');
+const gNodes = document.getElementById('nodes');
+const gLabs  = document.getElementById('labels');
+
+pos.forEach(p => HUBS.forEach(h => {
+  const l = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+  l.setAttribute('x1', p.x.toFixed(1)); l.setAttribute('y1', p.y.toFixed(1));
+  l.setAttribute('x2', h.x); l.setAttribute('y2', h.y);
+  l.setAttribute('class', 'gedge'); l.setAttribute('stroke', 'var(--muted)');
+  gEdges.appendChild(l);
+}));
+HUBS.forEach(h => {
+  const r = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+  r.setAttribute('x', h.x - 8); r.setAttribute('y', h.y - 8);
+  r.setAttribute('width', 16); r.setAttribute('height', 16); r.setAttribute('rx', 4);
+  r.setAttribute('fill', 'var(--base)'); r.setAttribute('class', 'ghub');
+  gHubs.appendChild(r);
+});
+pos.forEach(p => {
+  const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+  c.setAttribute('cx', p.x.toFixed(1)); c.setAttribute('cy', p.y.toFixed(1)); c.setAttribute('r', 8);
+  c.setAttribute('fill', 'var(--graph)'); c.setAttribute('stroke', 'var(--surface)');
+  c.setAttribute('stroke-width', 2.5); c.setAttribute('class', 'gnode');
+  gNodes.appendChild(c);
+});
+const ringLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+ringLabel.setAttribute('x', CX); ringLabel.setAttribute('y', 300);
+ringLabel.setAttribute('text-anchor', 'middle'); ringLabel.setAttribute('font-size', '13');
+ringLabel.setAttribute('font-weight', '600'); ringLabel.setAttribute('fill', 'var(--crit)');
+ringLabel.setAttribute('class', 'glabel'); ringLabel.textContent = 'refund-abuse ring, score 0.999';
+gLabs.appendChild(ringLabel);
+
+const edges = [...gEdges.children], hubs = [...gHubs.children], nodes = [...gNodes.children];
+const CAPS = [
+  'Ten payments arrive. Each one looks ordinary.',
+  'They share one device and one delivery address.',
+  'Those links are strong: few accounts touch either value.',
+  'One ring, caught on structure no single row contains.',
+];
+const capt = document.getElementById('capt'), stepno = document.getElementById('stepno');
+let timers = [];
+
+function reset() {
+  timers.forEach(clearTimeout); timers = [];
+  edges.forEach(e => { e.classList.remove('on'); e.setAttribute('stroke', 'var(--muted)'); });
+  hubs.forEach(h => h.classList.remove('on'));
+  nodes.forEach(n => { n.classList.remove('on'); n.setAttribute('fill', 'var(--graph)'); });
+  ringLabel.classList.remove('on');
+  capt.textContent = CAPS[0]; stepno.textContent = '1 / 4';
+}
+function at(ms, fn) { timers.push(setTimeout(fn, ms)); }
+
+function play() {
+  reset();
+  nodes.forEach((n, i) => at(120 + i * 70, () => n.classList.add('on')));
+  at(1000, () => { capt.textContent = CAPS[1]; stepno.textContent = '2 / 4';
+                   hubs.forEach(h => h.classList.add('on')); });
+  at(1300, () => edges.forEach((e, i) => at(i * 45, () => e.classList.add('on'))));
+  at(2400, () => { capt.textContent = CAPS[2]; stepno.textContent = '3 / 4';
+                   edges.forEach(e => e.setAttribute('stroke', 'var(--graph)')); });
+  at(3400, () => { capt.textContent = CAPS[3]; stepno.textContent = '4 / 4';
+                   nodes.forEach(n => n.setAttribute('fill', 'var(--crit)'));
+                   ringLabel.classList.add('on'); });
+}
+document.getElementById('replay').onclick = play;
+
+/* ---------- cost comparison ---------- */
+const COST = [
+  { k: 'Do nothing', v: 4139207, c: 'var(--crit)' },
+  { k: 'Tabular baseline', v: 1515528, c: 'var(--base)' },
+  { k: 'RingFence', v: 620212, c: 'var(--graph)' },
+];
+const inr = v => '₹' + (v / 100000).toFixed(1) + 'L';
+document.getElementById('cost').innerHTML = COST.map(r => `
+  <div class="row">
+    <div class="top"><span>${r.k}</span><b>${inr(r.v)}</b></div>
+    <div class="cbar" data-w="${(r.v / COST[0].v * 100).toFixed(1)}"
+         style="width:0;background:${r.c}">${r.k === 'RingFence' ? '85% of exposure recovered' : ''}</div>
+  </div>`).join('');
+
+/* ---------- ablation ---------- */
+const AB = [
+  { label: 'precision ≥ 0.95', graph: 0.9290, base: 0.7465 },
+  { label: 'precision ≥ 0.90', graph: 0.9400, base: 0.7538 },
+  { label: 'precision ≥ 0.80', graph: 0.9497, base: 0.8241 },
+  { label: 'precision ≥ 0.60', graph: 0.9648, base: 0.9133 },
 ];
 const pct = v => (v * 100).toFixed(1) + '%';
-document.getElementById('ablation').innerHTML = ABLATION.map(r => `
+document.getElementById('ablationRows').innerHTML = AB.map(r => `
   <div>
-    <div class="rl"><span>${r.label}</span><b>${pct(r.graph)} <span style="color:var(--muted);font-weight:400">vs</span> ${pct(r.base)}</b></div>
+    <div class="rl"><span>${r.label}</span><b>${pct(r.graph)}
+      <span style="color:var(--muted);font-weight:400">vs</span> ${pct(r.base)}</b></div>
     <div class="track">
-      <div class="bar g" style="width:${(r.graph*100).toFixed(1)}%"></div>
-      <div class="bar b" style="width:${(r.base*100).toFixed(1)}%"></div>
+      <div class="bar g" data-w="${(r.graph * 100).toFixed(1)}" style="width:0"></div>
+      <div class="bar b" data-w="${(r.base * 100).toFixed(1)}" style="width:0"></div>
     </div>
   </div>`).join('');
+
+/* ---------- reveal on scroll, and grow the bars when they land ---------- */
+const io = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (!e.isIntersecting) return;
+    e.target.classList.add('in');
+    e.target.querySelectorAll('[data-w]').forEach(b => { b.style.width = b.dataset.w + '%'; });
+    io.unobserve(e.target);
+  });
+}, { threshold: 0.12 });
+document.querySelectorAll('.reveal').forEach(s => io.observe(s));
+
+// Anchor jumps can skip sections entirely, leaving them stuck invisible. Reveal
+// anything at or above the current scroll position on every navigation.
+function revealPassed() {
+  const edge = window.scrollY + window.innerHeight;
+  document.querySelectorAll('.reveal:not(.in)').forEach(s => {
+    if (s.getBoundingClientRect().top + window.scrollY < edge) {
+      s.classList.add('in');
+      s.querySelectorAll('[data-w]').forEach(b => { b.style.width = b.dataset.w + '%'; });
+    }
+  });
+}
+addEventListener('hashchange', () => setTimeout(revealPassed, 600));
+addEventListener('scroll', revealPassed, { passive: true });
+revealPassed();
+
+play();
 </script>
 </body>
 </html>
