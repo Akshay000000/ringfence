@@ -1,4 +1,4 @@
-"""IEEE-CIS Fraud Detection (Vesta) adapter — the real-data validation.
+"""IEEE-CIS Fraud Detection (Vesta) adapter, the real-data validation.
 
 Source: https://www.kaggle.com/competitions/ieee-fraud-detection
 590,540 real card-not-present transactions over ~182 days, 3.5% fraud, with a
@@ -8,7 +8,7 @@ strings and browser/screen fingerprints.
 Why this dataset and not one of the tidier public fraud sets: almost every other
 option (the ULB credit-card set, for instance) ships PCA components with the
 entity columns stripped out, so there is nothing to build a graph *from*. Here
-the linking columns survive — and notably, the strongest published solutions to
+the linking columns survive, and notably, the strongest published solutions to
 this competition all turned on reconstructing a client identity from
 `card1 + addr1 + (day - D1)`. That is entity resolution by another name, which
 makes this the fairest available real test of RingFence's central claim.
@@ -24,16 +24,16 @@ There is no customer ID in the data. The standard reconstruction:
 
 Two transactions sharing all three are, with high probability, the same client.
 This is a *heuristic*, not a label, and it matters that it is used only to form
-`customer_id` — the identity graph then links those clients by the identifier
+`customer_id`, the identity graph then links those clients by the identifier
 columns exactly as it does on synthetic data. The graph is not handed the answer.
 
 ## What this dataset cannot supply
 
 Stated plainly, because these features go inert rather than wrong:
 
-  * no authorisation outcome — every row is a completed transaction, so
+  * no authorisation outcome, every row is a completed transaction, so
     decline-rate features are constant and carry no signal;
-  * no refunds or disputes as events — `isFraud` is the given label, so the
+  * no refunds or disputes as events. `isFraud` is the given label, so the
     label-maturity model does not apply and is switched off;
   * no phone or IP;
   * **no ring labels at all**. Per-archetype recall and novel-ring reporting are

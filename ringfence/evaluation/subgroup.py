@@ -1,8 +1,8 @@
 """Does the graph help where the fraud is actually relational?
 
 F8 reported a null on IEEE-CIS: no measurable lift overall. The explanation
-offered there — that the graph pays off on collusion and this dataset is mostly
-single-actor fraud — is not a shrug, it is a **falsifiable prediction**. If it is
+offered there, that the graph pays off on collusion and this dataset is mostly
+single-actor fraud, is not a shrug, it is a **falsifiable prediction**. If it is
 right, the graph's advantage should grow with how much linked-account structure a
 payment actually sits in. If the advantage is flat across that axis, the
 explanation is wrong and should be withdrawn.
@@ -15,7 +15,7 @@ deviations.
 
 Read this as a subgroup analysis: it is evidence about *where* a method works,
 declared in advance from a stated hypothesis. It is not a headline metric, and a
-bucket's absolute PR-AUC is not comparable to another bucket's — the base rates
+bucket's absolute PR-AUC is not comparable to another bucket's, the base rates
 differ. Only the within-bucket gap between arms means anything.
 """
 from __future__ import annotations

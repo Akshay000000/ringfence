@@ -11,7 +11,7 @@ and watch what happens to the gap. Two corruption modes, because they are not
 equally hard:
 
   symmetric   flip labels in both directions at rate p. The easy case.
-  fn_only     flip only positives to negatives — fraud that was never caught and
+  fn_only     flip only positives to negatives, fraud that was never caught and
               therefore trains as legitimate. This is what actually happens in a
               fraud system, and it is worse, because it teaches the model that
               real attacks are fine.

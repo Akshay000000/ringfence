@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>RingFence — Analyst Console</title>
+<title>RingFence Analyst Console</title>
 <style>
   :root {
     color-scheme: light;
@@ -194,7 +194,7 @@
 
     <section class="card">
       <h2>Recall by attack type</h2>
-      <p class="cap">Both arms pinned to precision 0.90 — the like-for-like comparison.</p>
+      <p class="cap">Both arms pinned to precision 0.90, the like-for-like comparison.</p>
       <div class="legend">
         <span><i class="swatch" style="background:var(--series-graph)"></i> With identity graph</span>
         <span><i class="swatch" style="background:var(--series-baseline)"></i> Tabular baseline</span>
@@ -248,8 +248,8 @@ function showTip(e, html) {
 }
 function hideTip() { tip.style.opacity = 0; }
 
-const pct = v => (v == null ? '—' : (v * 100).toFixed(1) + '%');
-const inr = v => v == null ? '—' : '₹' + Math.round(v).toLocaleString('en-IN');
+const pct = v => (v == null ? 'n/a' : (v * 100).toFixed(1) + '%');
+const inr = v => v == null ? 'n/a' : '₹' + Math.round(v).toLocaleString('en-IN');
 const VERDICTS = {
   card_testing:  { label: 'Card testing',  color: 'var(--status-critical)' },
   refund_abuse:  { label: 'Refund abuse',  color: 'var(--status-critical)' },
@@ -295,7 +295,7 @@ async function loadSummary() {
     { label: 'PR-AUC', value: (g.pr_auc ?? 0).toFixed(4),
       foot: `baseline ${(b.pr_auc ?? 0).toFixed(4)}` },
     { label: 'Good customers blocked', value: (g.blocked_good ?? 0).toLocaleString('en-IN'),
-      foot: `baseline blocks ${(b.blocked_good ?? 0).toLocaleString('en-IN')} — ${Math.round((b.blocked_good||1)/(g.blocked_good||1))}× more` },
+      foot: `baseline blocks ${(b.blocked_good ?? 0).toLocaleString('en-IN')}, ${Math.round((b.blocked_good||1)/(g.blocked_good||1))}× more` },
     { label: 'Net saving vs doing nothing', value: inr(g.net_saving_inr),
       foot: `${pct((g.net_saving_inr||0)/(g.do_nothing_inr||1))} of exposure recovered` },
   ];
@@ -373,7 +373,7 @@ function subgraph(ev) {
   const hubMarks = hubs.map(h =>
     `<rect x="${h.x - 7}" y="${h.y - 7}" width="14" height="14" rx="3"
        fill="var(--series-baseline)" stroke="var(--surface-1)" stroke-width="2"
-       data-t="${h.l.link_label}: ${h.l.masked} — ${h.l.accounts} accounts, weight ${h.l.weight.toFixed(2)}"/>`).join('');
+       data-t="${h.l.link_label}: ${h.l.masked}  ${h.l.accounts} accounts, weight ${h.l.weight.toFixed(2)}"/>`).join('');
   return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:300px;overflow:visible">
     ${edges}${nodes}${hubMarks}</svg>
     <div class="legend" style="margin-top:8px">
@@ -400,7 +400,7 @@ async function selectAlert(id) {
   el.innerHTML = `
     <h2>${a.payment_id}
       <span class="chip" style="margin-left:8px"><i class="dot" style="background:${v.color}"></i>${v.label}</span></h2>
-    <p class="cap">${inr(a.amount_inr)} order · ${inr(a.exposure_inr)} at risk · day ${a.day} · account age ${a.account_age_days ?? '—'} days</p>
+    <p class="cap">${inr(a.amount_inr)} order · ${inr(a.exposure_inr)} at risk · day ${a.day} · account age ${a.account_age_days ?? 'n/a'} days</p>
     <p class="summary">${a.summary || ''}</p>
     ${a.caveat ? `<p class="caveat">⚠ ${a.caveat}</p>` : ''}
 
@@ -422,7 +422,7 @@ ${r.generic ? '' : `<div class="detail">${r.detail}</div>`}
 
     ${ev ? `
       <h2 style="margin-top:22px">Evidence</h2>
-      <p class="attach">Cluster <b>${ev.cluster}</b> as of day ${ev.as_of_day} — ${ev.member_count} linked accounts.<br>Attached: ${ev.attachment}</p>
+      <p class="attach">Cluster <b>${ev.cluster}</b> as of day ${ev.as_of_day}  ${ev.member_count} linked accounts.<br>Attached: ${ev.attachment}</p>
       <div class="ev">
         <div>${subgraph(ev)}</div>
         <div>

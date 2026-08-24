@@ -409,7 +409,7 @@ def narrate(
         # transaction features alone.
         ranked = ranked[~ranked["group"].isin(GRAPH_GROUPS)]
         caveat = (
-            "No linked-account evidence was available at scoring time — this "
+            "No linked-account evidence was available at scoring time, this "
             "score rests on transaction features alone."
         )
 

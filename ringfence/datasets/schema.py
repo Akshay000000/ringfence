@@ -3,7 +3,7 @@
 RingFence's graph, featurisers, model and evaluation code were written against
 the synthetic generator. Rather than fork them for a second dataset, an adapter
 converts the source data *into this schema* and the whole pipeline runs
-unchanged. If that works, the architecture is dataset-agnostic — which is a
+unchanged. If that works, the architecture is dataset-agnostic, which is a
 stronger claim than any single benchmark number.
 
 Columns fall into three tiers:
@@ -35,7 +35,7 @@ DERIVED = [
 
 # Present only where ground-truth ring membership is known (i.e. the synthetic
 # corpus). Real data has fraud labels but no ring labels, so per-archetype and
-# novel-ring reporting are simply unavailable there — and are reported as
+# novel-ring reporting are simply unavailable there, and are reported as
 # unavailable rather than approximated.
 GROUND_TRUTH = ["ring_id", "ring_type", "benign_cluster"]
 

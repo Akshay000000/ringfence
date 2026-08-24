@@ -119,7 +119,7 @@ def novel_vs_seen_rings(
     """
     if not has_ring_labels(test):
         return pd.DataFrame(
-            [{"cohort": "unavailable — dataset has no ring labels", "rings": 0,
+            [{"cohort": "unavailable, dataset has no ring labels", "rings": 0,
               "payments": int(test["is_fraud"].sum()), "recall": np.nan}]
         )
     seen = set(train.loc[train["is_fraud"], "ring_id"].unique())

@@ -1,4 +1,4 @@
-"""RingFence analyst console — HTTP service.
+"""RingFence analyst console. HTTP service.
 
 Built on Starlette rather than FastAPI. FastAPI runs on Starlette anyway, and
 for six routes its request-model machinery buys nothing that hand-written

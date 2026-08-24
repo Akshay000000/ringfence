@@ -1,4 +1,4 @@
-# RingFence on IEEE-CIS (Vesta) — the real-data validation.
+# RingFence on IEEE-CIS (Vesta), the real-data validation.
 #
 # Same pipeline, same code, different adapter. Everything that differs from the
 # synthetic run is here, and every difference is a property of the data rather
@@ -23,12 +23,12 @@ graph:
   # The link surface here is thinner and dirtier than the synthetic corpus, and
   # the caps reflect that honestly:
   #
-  #   card_fingerprint  card1·card2·card3·card5 — the strongest link available.
+  #   card_fingerprint  card1·card2·card3·card5, the strongest link available.
   #   device_fingerprint  device string + OS + browser + screen. Present on only
   #     ~24% of rows, and a generic combination like "Windows|Chrome|1920x1080"
   #     is shared by thousands, so the cap does the discriminating.
   #   shipping_address_hash  addr1 is a billing *region* code, not a street
-  #     address — roughly 330 values across 590k rows. Most will be pruned as
+  #     address, roughly 330 values across 590k rows. Most will be pruned as
   #     infrastructure, and that is correct: a region is not evidence.
   #   email_root  a *domain*, not an inbox. gmail.com covers a third of the
   #     dataset. Weak prior and a tight cap, so only rare domains ever link.
@@ -64,7 +64,7 @@ label_maturity:
   return_window_days: 0
 
 costs:
-  # USD, and deliberately generic — the point of the real-data run is the
+  # USD, and deliberately generic, the point of the real-data run is the
   # ablation, not a rupee headline for someone else's merchant.
   chargeback_fee_inr: 25
   fraud_recovery_rate: 0.12

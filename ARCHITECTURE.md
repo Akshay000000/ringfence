@@ -1,10 +1,10 @@
-# RingFence — Architecture
+# RingFence: Architecture
 
 **Track 02 · AI Risk Manager · Razorpay AI Buildathon 2026**
 
 > Abuse rings are not detectable one transaction at a time. RingFence builds an
 > identity graph over payment traffic, finds the collusion structure inside it,
-> and feeds that structure back into a per-transaction risk model — then proves
+> and feeds that structure back into a per-transaction risk model, then proves
 > the graph earned its place with a held-out ablation.
 
 ---
@@ -49,7 +49,7 @@ a false-positive flood. Two mechanisms handle them:
 1. **IDF-weighted edges.** An identifier's evidential strength is inversely
    proportional to how many entities touch it. A shared card fingerprint across
    3 accounts is loud. A shared IP across 400 is nearly silent. Edge weight
-   `w = log(N / df(identifier))`, thresholded — this is TF-IDF applied to
+   `w = log(N / df(identifier))`, thresholded. This is TF-IDF applied to
    identity resolution, and it is the single highest-leverage design decision
    in the system.
 2. **The model decides, not the graph.** Ring membership is a *feature*, never a
@@ -108,25 +108,25 @@ a false-positive flood. Two mechanisms handle them:
               └───────────────────────────────────┘
 ```
 
-## 4. Leakage control — the part that decides whether the numbers are real
+## 4. Leakage control: the part that decides whether the numbers are real
 
 This is where most hackathon fraud projects quietly cheat. Three rules:
 
-**R1 — Temporal split, not random split.** Train on days 0–59, validate on
-60–74, test on 75–89. A random split leaks the future: the same ring appears on
+**R1: temporal split, not random split.** Train on days 0-89, validate on
+90-109, test on 110-149. A random split leaks the future: the same ring appears on
 both sides and the model memorises ring IDs rather than ring *shape*.
 
-**R2 — Graph features are computed as-of the transaction's day, from prior days
+**R2: graph features are computed as-of the transaction's day, from prior days
 only.** The graph is snapshotted daily. A transaction on day 80 sees the graph
-built from days 0–79. It never sees its own edge, and never sees a ring-mate's
+built from days 0-79. It never sees its own edge, and never sees a ring-mate's
 later chargeback. Implemented by construction, not by hope.
 
-**R3 — Ring-disjoint reporting.** Test-set rings that also appear in the training
+**R3: ring-disjoint reporting.** Test-set rings that also appear in the training
 window are reported separately from rings that are entirely novel. The headline
 number is the **novel-ring** number, because that is what production looks like
 on the day a new fraud crew arrives.
 
-## 5. Cost model — why F1 is the wrong objective
+## 5. Cost model: why F1 is the wrong objective
 
 Precision and recall are not the merchant's objective function. Rupees are.
 
@@ -156,7 +156,7 @@ incapable of offense, and this is enforced, not promised:
   or bypass techniques. Card "fingerprints" are opaque random tokens.
 - No component recommends how to evade detection, and the repo contains no
   attack tooling.
-- The dataset is entirely synthetic — no real cardholder data ever enters the
+- The dataset is entirely synthetic. No real cardholder data ever enters the
   system.
 
 ## 7. Deliverables against the track bar
@@ -181,7 +181,7 @@ ringfence/
   explain/     evidence subgraph + SHAP → analyst-readable reason
   api/         FastAPI scoring service
 configs/       one YAML controls every knob; nothing is hardcoded in a notebook
-reports/       generated artefacts — all regenerable with `make all`
+reports/       generated artefacts, all regenerable with `make all`
 ```
 
 ## 9. Reproducibility contract
