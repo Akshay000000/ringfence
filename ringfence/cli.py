@@ -360,6 +360,16 @@ def cmd_labelnoise(cfg) -> None:
     _log(f"label-noise study written to {reports_dir() / 'label_noise.csv'}")
 
 
+def cmd_site(cfg) -> None:
+    """Bake the console into a static bundle the showcase site can serve."""
+    from .api.export_static import write
+
+    _log("baking console responses into a static bundle")
+    path = write()
+    size_mb = path.stat().st_size / 1e6
+    _log(f"wrote {path} ({size_mb:.1f} MB)")
+
+
 def cmd_serve(cfg, host: str = "127.0.0.1", port: int = 8000) -> None:
     """Run the analyst console."""
     import uvicorn
@@ -392,6 +402,7 @@ COMMANDS = {
     "verify": cmd_verify,
     "seedstudy": cmd_seedstudy,
     "labelnoise": cmd_labelnoise,
+    "site": cmd_site,
     "serve": cmd_serve,
 }
 
@@ -409,7 +420,7 @@ def main(argv: list[str] | None = None) -> int:
     # is never part of it.
     # `all` is the reproducible pipeline. `serve` is long-running and
     # `seedstudy` refits 20 models, so both are opt-in.
-    optional = {"serve", "seedstudy", "labelnoise"}
+    optional = {"serve", "seedstudy", "labelnoise", "site"}
     steps = [s for s in COMMANDS if s not in optional] if args.command == "all" else [args.command]
     for step in steps:
         COMMANDS[step](cfg)

@@ -3,6 +3,9 @@ __pycache__/
 .venv/
 venv/
 data/
+# ...but the baked console bundle must ship: a static deploy has no build step.
+!site/data/
+!site/data/console-data.js
 # Model + matrix pickles, at any depth (reports are now per-dataset).
 **/*.pkl
 reports/**/matrix.pkl
@@ -19,3 +22,4 @@ train_transaction.csv/
 train_identity.csv/
 train_transaction.csv
 train_identity.csv
+

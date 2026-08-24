@@ -330,6 +330,23 @@ incapable of offense:
 
 ---
 
+## The showcase site
+
+`site/` is a static build: the showcase page plus the analyst console running
+against a baked bundle of its own API responses, so the whole demo works on a
+CDN with no backend.
+
+```bash
+python -m ringfence.cli site     # rebake site/data/console-data.js and site/console.html
+```
+
+The console reads from the bundle when one is present and falls back to the live
+API when it is not, so a single page serves both `ringfence.cli serve` and a
+static host. Deploy to Vercel or Render with publish directory `site` and no
+build command; see `site/README.md`.
+
+---
+
 ## Against the track brief
 
 Track 02 asks for *"a working detector, verifier or auto-responder for one class

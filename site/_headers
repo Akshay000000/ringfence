@@ -1,0 +1,4 @@
+# Render / Netlify style headers. The baked console bundle never changes for a
+# given deploy, so it can be cached hard.
+/data/*
+  Cache-Control: public, max-age=31536000, immutable

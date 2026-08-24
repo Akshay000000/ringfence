@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RingFence</title>
+<meta name="description" content="Graph-based abuse-ring detection for merchant payments. Razorpay AI Buildathon 2026, Track 02.">
+<style>
+  :root {
+    color-scheme: light;
+    --surface: #fcfcfb; --plane: #f9f9f7;
+    --ink: #0b0b0b; --ink2: #52514e; --muted: #898781;
+    --grid: #e1e0d9; --border: rgba(11,11,11,0.10);
+    --graph: #2a78d6; --base: #eb6834;
+    --good: #0ca30c; --crit: #d03b3b; --warn: #fab219;
+  }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --surface: #1a1a19; --plane: #0d0d0d;
+    --ink: #ffffff; --ink2: #c3c2b7; --muted: #898781;
+    --grid: #2c2c2a; --border: rgba(255,255,255,0.10);
+    --graph: #3987e5; --base: #d95926;
+  } }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --surface: #1a1a19; --plane: #0d0d0d;
+    --ink: #ffffff; --ink2: #c3c2b7; --muted: #898781;
+    --grid: #2c2c2a; --border: rgba(255,255,255,0.10);
+    --graph: #3987e5; --base: #d95926;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--plane); color:var(--ink);
+    font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+  .wrap { max-width: 940px; margin:0 auto; padding: 0 22px 90px; }
+  a { color: var(--graph); }
+
+  header.hero { padding: 68px 0 30px; }
+  .tag { font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); }
+  h1 { font-size:44px; margin:12px 0 6px; letter-spacing:-.025em; }
+  .lede { font-size:19px; color:var(--ink2); max-width:660px; margin:0 0 24px; }
+  .cta { display:flex; gap:10px; flex-wrap:wrap; }
+  .btn { display:inline-block; text-decoration:none; font-size:14px; font-weight:500;
+    padding:9px 16px; border-radius:8px; border:1px solid var(--border); color:var(--ink); }
+  .btn.primary { background:var(--ink); color:var(--surface); border-color:var(--ink); }
+
+  section { padding: 34px 0; border-top:1px solid var(--grid); }
+  h2 { font-size:13px; letter-spacing:.06em; text-transform:uppercase; color:var(--muted);
+    margin:0 0 16px; font-weight:600; }
+  h3 { font-size:20px; margin:0 0 10px; letter-spacing:-.01em; }
+  p { margin:0 0 14px; }
+  .note { color:var(--ink2); font-size:15px; }
+
+  .tiles { display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:12px; }
+  .tile { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:16px 18px; }
+  .tile .k { font-size:11.5px; text-transform:uppercase; letter-spacing:.05em; color:var(--ink2); }
+  .tile .v { font-size:30px; font-weight:650; margin-top:6px; letter-spacing:-.02em; }
+  .tile .f { font-size:12.5px; color:var(--muted); margin-top:4px; }
+  .up { color:var(--good); font-weight:600; }
+
+  table { width:100%; border-collapse:collapse; font-size:14.5px; margin:6px 0 16px; }
+  th { text-align:left; font-weight:500; color:var(--muted); font-size:11.5px;
+    text-transform:uppercase; letter-spacing:.05em; padding:7px 10px; border-bottom:1px solid var(--border); }
+  td { padding:9px 10px; border-bottom:1px solid var(--grid); font-variant-numeric:tabular-nums; }
+  td.num, th.num { text-align:right; }
+  tbody tr:last-child td { border-bottom:none; }
+
+  .legend { display:flex; gap:18px; font-size:12.5px; color:var(--ink2); margin:0 0 14px; }
+  .legend span { display:inline-flex; align-items:center; gap:6px; }
+  .sw { width:10px; height:10px; border-radius:2px; }
+
+  .rows { display:flex; flex-direction:column; gap:14px; }
+  .rl { font-size:13px; color:var(--ink2); display:flex; justify-content:space-between; margin-bottom:5px; }
+  .rl b { color:var(--ink); font-variant-numeric:tabular-nums; }
+  .track { position:relative; height:22px; }
+  .bar { position:absolute; left:0; height:9px; border-radius:0 4px 4px 0; }
+  .bar.g { background:var(--graph); top:0; }
+  .bar.b { background:var(--base); top:12px; }
+
+  .split { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  @media (max-width:760px){ .split { grid-template-columns:1fr; } }
+  .card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:18px 20px; }
+  .card.win { border-left:3px solid var(--good); }
+  .card.null { border-left:3px solid var(--warn); }
+  .card h4 { margin:0 0 4px; font-size:15px; }
+  .card .sub { font-size:12.5px; color:var(--muted); margin:0 0 10px; }
+
+  .quote { border-left:3px solid var(--graph); padding:2px 0 2px 16px; margin:16px 0;
+    color:var(--ink2); font-size:15.5px; }
+  ol.log { padding-left:20px; }
+  ol.log li { margin-bottom:12px; color:var(--ink2); }
+  ol.log b { color:var(--ink); font-weight:600; }
+  code { font-family:ui-monospace,Menlo,monospace; font-size:13px;
+    background:var(--grid); padding:1px 5px; border-radius:4px; }
+  pre { background:var(--surface); border:1px solid var(--border); border-radius:8px;
+    padding:14px 16px; overflow-x:auto; font-size:12.5px; line-height:1.5; }
+  footer { padding-top:28px; border-top:1px solid var(--grid); color:var(--muted); font-size:13px; }
+  .pill { display:inline-block; font-size:11.5px; border:1px solid var(--border);
+    border-radius:999px; padding:3px 10px; color:var(--ink2); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="hero">
+    <div class="tag">Razorpay AI Buildathon 2026 &middot; Track 02, AI Risk Manager</div>
+    <h1>RingFence</h1>
+    <p class="lede">Abuse rings are invisible one transaction at a time. RingFence builds an
+      identity graph over payment traffic, finds the collusion inside it, and then tries hard
+      to prove the graph was not worth it.</p>
+    <div class="cta">
+      <a class="btn primary" href="console.html">Open the analyst console</a>
+      <a class="btn" href="https://github.com/Akshay000000/ringfence">Source on GitHub</a>
+    </div>
+  </header>
+
+  <section>
+    <h2>The problem</h2>
+    <h3>A single card-testing payment is a &#8377;5 failed charge. There is nothing in that row to learn from.</h3>
+    <p class="note">There is everything to learn from the fact that the same device tried two hundred of them.
+      Three loss classes look unrelated in a dashboard and are the same thing underneath.</p>
+    <table>
+      <thead><tr><th>Loss class</th><th>Per transaction</th><th>In aggregate</th></tr></thead>
+      <tbody>
+        <tr><td>Card testing</td><td>A few small failed payments</td><td>One device, 200 cards, 40 minutes</td></tr>
+        <tr><td>Refund abuse</td><td>A normal first order, later refunded</td><td>60 "new customers", one shipping address</td></tr>
+        <tr><td>Bust-out</td><td>A large captured payment</td><td>30 fresh accounts, one drop address, chargebacks at T+45d</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>What it saves the merchant</h2>
+    <div class="tiles">
+      <div class="tile"><div class="k">Total cost to merchant</div><div class="v">&#8377;6.2L</div>
+        <div class="f">from &#8377;41.4L doing nothing</div></div>
+      <div class="tile"><div class="k">Fraud caught</div><div class="v">92.2%</div>
+        <div class="f"><span class="up">+4.3 pts</span> over baseline</div></div>
+      <div class="tile"><div class="k">Good customers blocked</div><div class="v">49</div>
+        <div class="f">baseline blocks 564, 11&times; more</div></div>
+      <div class="tile"><div class="k">Recall at precision 0.95</div><div class="v">92.9%</div>
+        <div class="f"><span class="up">+24.5%</span> vs 74.7% baseline</div></div>
+    </div>
+    <p class="note" style="margin-top:16px">Held-out temporal split: 187,149 payments, 1,649 fraudulent,
+      42 abuse rings, none of which appear in the training window. A false positive is charged at the
+      order margin plus a lifetime-value hit, so the operating threshold is chosen to minimise rupees,
+      not to maximise F1.</p>
+  </section>
+
+  <section>
+    <h2>The ablation</h2>
+    <p class="note">Same algorithm, same rows, same seed. One feature block apart.</p>
+    <div class="legend">
+      <span><i class="sw" style="background:var(--graph)"></i> With identity graph</span>
+      <span><i class="sw" style="background:var(--base)"></i> Tabular baseline</span>
+    </div>
+    <div class="rows" id="ablation"></div>
+    <p class="note" style="margin-top:18px"><b>Where the lift comes from</b>, both arms pinned to precision 0.90:
+      refund abuse 0.43 &rarr; 0.92, bust-out 0.54 &rarr; 0.85, card testing 0.97 &rarr; 0.99.
+      The graph adds almost nothing to card testing, because velocity counters already catch it.
+      That is reported rather than buried.</p>
+  </section>
+
+  <section>
+    <h2>Validated twice, with opposite outcomes</h2>
+    <div class="split">
+      <div class="card win">
+        <h4>Synthetic corpus</h4>
+        <p class="sub">458k payments, ring-labelled, benign confounders planted</p>
+        <p class="note" style="margin:0"><b>+24.5%</b> recall at precision 0.95.
+          Survives a permutation test, 20% of fraud going unlabelled, and six leakage checks.</p>
+      </div>
+      <div class="card null">
+        <h4>IEEE-CIS (Vesta)</h4>
+        <p class="sub">590k real card-not-present transactions, 3.5% fraud</p>
+        <p class="note" style="margin:0"><b>No measurable difference.</b>
+          0.4546 &plusmn; 0.0043 against 0.4561 &plusmn; 0.0041 across five seeds. That gap is
+          0.4 pooled standard deviations.</p>
+      </div>
+    </div>
+    <p class="note" style="margin-top:16px">A single-seed run had the graph ahead by +2.9% and I nearly wrote
+      it up. Refitting across five seeds showed run-to-run variance was three times the size of the effect.
+      There is now a <code>seedstudy</code> command so no claim in the repo can be made without clearing
+      its own noise floor.</p>
+    <p class="note">I then offered an explanation for the null, that IEEE-CIS fraud is single-actor rather
+      than collusive, and tested it. If true, the advantage should grow with how much linked-account
+      structure a payment sits in. Bucketed by cluster size, there is no trend, and the only significant
+      result is the graph doing <b>worse</b> on small clusters. The explanation was withdrawn.</p>
+    <div class="quote">The graph produces a large, verified improvement on a benchmark whose ring structure
+      I constructed. It produces no measurable improvement on real data, and a targeted search for the
+      subgroup where it should have helped found nothing. Why it does not transfer is unresolved.</div>
+  </section>
+
+  <section>
+    <h2>How it works</h2>
+    <p class="note">Three decisions carry the result.</p>
+    <h3>1. Shared identifiers are graded, not binary</h3>
+    <p class="note">Most identifier sharing is innocent: families share cards, a carrier NAT puts 400
+      customers on one IP, an apartment block shares a delivery address. Edge weight is
+      <code>prior[type] &times; log(N/df(v)) / log(N)</code>, so a card on 3 accounts is loud and an IP on
+      400 is silent. Hub identifiers past a per-type cap are dropped outright rather than down-weighted,
+      because a carrier NAT block carries no information at any weight and keeping it injects an
+      80,000-edge clique.</p>
+    <h3>2. Cohort synchrony separates a drop address from an apartment block</h3>
+    <p class="note">Both are twenty accounts on one address, structurally identical in a graph. What
+      separates them is when the accounts were created: a building's residents signed up over years, a
+      mule cohort signed up the same week. Without this feature the graph actively hurt bust-out recall.</p>
+    <h3>3. Resolve by identifier, not by customer</h3>
+    <p class="note">A mule's first payment has no history, so a customer-keyed lookup returns nothing for
+      exactly the transactions that matter most. Resolving through the drop address it ships to lifted
+      fraud coverage from ~40% to ~60% and flipped the ablation from &minus;4.6% to +23.9%.</p>
+  </section>
+
+  <section>
+    <h2>The engineering log</h2>
+    <p class="note">Five times this build produced a number that looked fine and was wrong. All five are
+      in <a href="https://github.com/Akshay000000/ringfence/blob/main/FINDINGS.md">FINDINGS.md</a>.</p>
+    <ol class="log">
+      <li><b>A PR-AUC of 0.99 meant the benchmark was broken</b>, not that the model was good. Every ring
+        account was freshly minted and almost every honest account was aged, so account age alone
+        separated them.</li>
+      <li><b>The graph made the model worse</b> at first. Snapshots ran on a 5-day stride and card-testing
+        rings live 2 days, so the graph block became a tenure signal that anti-correlated with fraud.</li>
+      <li><b>Louvain at resolution above 1 shatters cliques</b> into singletons, and a ring sharing one drop
+        address is a clique. The tell was a recall cliff at exactly the code's clustering cutoff.</li>
+      <li><b>A pruned identifier was still resolving payments into clusters.</b> Every payment carrying a
+        gmail address inherited whatever cluster gmail touched: 100% of rows "in a cluster", median cluster
+        of 153 accounts. Fixing it <em>raised</em> the headline.</li>
+      <li><b>I tested my own explanation for the null and withdrew it.</b> The comfortable story did not
+        survive contact with the data.</li>
+    </ol>
+  </section>
+
+  <section>
+    <h2>Every alert is contestable</h2>
+    <p class="note">A score is not actionable, and "the model said so" is not something to put in front of
+      a merchant whose payment was blocked. Each alert carries a reason and the evidence behind it.
+      Reasons come from group occlusion rather than SHAP: each feature group is replaced with what a normal
+      customer looks like and the payment re-scored, which yields a real counterfactual on the real model.</p>
+    <pre>Scored 1.000. Driven by the whole cluster transacted inside 4 days.
+
+  cluster cl_239 as of day 134 (12 linked accounts)
+  linked by:
+    device                     dev...bWc   12 accounts   weight 0.66
+    email (alias-normalised)   m1w...com    3 accounts   weight 0.58
+    shipping address           add...Zw2   12 accounts   weight 0.58
+    IP address                 97....239   12 accounts   weight 0.27</pre>
+    <p class="note">Twelve "different customers", one handset, one delivery address, and three emails
+      collapsing to the same inbox once plus-aliasing is normalised. The console ships the worst false
+      positives too, because a model that can only explain its wins is not auditable.</p>
+    <div class="cta"><a class="btn primary" href="console.html">Open the console</a></div>
+  </section>
+
+  <section>
+    <h2>Defense only</h2>
+    <p class="note">The track disqualifies anything offense-capable, and this is enforced by architecture
+      rather than promised. The service consumes transaction records and emits risk scores and evidence.
+      Every route is GET. There is no endpoint that blocks a payment, issues a refund, or mutates an
+      account. The generator produces labelled abuse patterns for evaluation only: card fingerprints are
+      opaque random tokens with no BIN structure, and no real cardholder data enters the system.</p>
+    <p><span class="pill">17 regression tests</span> <span class="pill">6 verification checks</span>
+      <span class="pill">reproducible from a fixed seed</span> <span class="pill">read-only by construction</span></p>
+  </section>
+
+  <footer>
+    Built by Akshay Sriram for the Razorpay AI Buildathon 2026.
+    Every figure on this page is regenerated by <code>make all</code> from a clean checkout.
+    IEEE-CIS data is used under the Kaggle competition terms and is not redistributed here.
+  </footer>
+</div>
+
+<script>
+const ABLATION = [
+  { label: 'precision &ge; 0.95', graph: 0.9290, base: 0.7465 },
+  { label: 'precision &ge; 0.90', graph: 0.9400, base: 0.7538 },
+  { label: 'precision &ge; 0.80', graph: 0.9497, base: 0.8241 },
+  { label: 'precision &ge; 0.60', graph: 0.9648, base: 0.9133 },
+];
+const pct = v => (v * 100).toFixed(1) + '%';
+document.getElementById('ablation').innerHTML = ABLATION.map(r => `
+  <div>
+    <div class="rl"><span>${r.label}</span><b>${pct(r.graph)} <span style="color:var(--muted);font-weight:400">vs</span> ${pct(r.base)}</b></div>
+    <div class="track">
+      <div class="bar g" style="width:${(r.graph*100).toFixed(1)}%"></div>
+      <div class="bar b" style="width:${(r.base*100).toFixed(1)}%"></div>
+    </div>
+  </div>`).join('');
+</script>
+</body>
+</html>

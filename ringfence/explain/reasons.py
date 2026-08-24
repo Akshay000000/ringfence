@@ -121,9 +121,9 @@ REASON_GROUPS: dict[str, dict] = {
             "cl_customers", "cl_payments",
         ],
         "evidence": [
-            ("cl_customers", "sits in a cluster of {n:.0f} linked account(s)"),
-            ("g_degree", "shares an identifier with {n:.0f} other account(s)"),
-            ("mean_edge_weight", "linked by high-confidence identifiers (combined edge weight {n:.2f})"),
+            ("cl_customers", "a cluster of {n:.0f} linked account(s)"),
+            ("g_degree", "an identifier shared with {n:.0f} other account(s)"),
+            ("mean_edge_weight", "high-confidence shared identifiers (combined edge weight {n:.2f})"),
         ],
     },
     "cohort_synchrony": {
@@ -138,7 +138,7 @@ REASON_GROUPS: dict[str, dict] = {
         ],
         "evidence": [
             ("cl_new_account_share", "{n:.0%} of the linked accounts are under 30 days old"),
-            ("cl_signup_span", "all linked accounts opened within {n:.0f} day(s) of each other"),
+            ("cl_signup_span", "linked accounts all opened within {n:.0f} day(s) of each other"),
             ("cl_account_age_mean", "linked accounts average {n:.0f} day(s) old"),
         ],
     },
