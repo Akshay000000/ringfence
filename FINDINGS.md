@@ -236,22 +236,106 @@ don't work":
    what the graph computes. The baseline already has them, and the honest
    ablation gave them to both arms.
 
-**What this narrows the claim to.** Not "an identity graph improves fraud
-detection". It is:
-
-> An identity graph pays for itself when the loss mechanism is **collusion
-> between accounts** and the merchant holds **raw identifiers** — device, card
-> token, delivery address, phone. It adds nothing measurable when the fraud is
-> single-actor, the identifiers are coarse proxies, or the entity aggregation has
-> already been engineered into the feature set.
-
-That is a narrower claim than the synthetic result alone would support, and it is
-the one both datasets together actually justify. A merchant on raw Razorpay data
-is in the first situation. IEEE-CIS is in the second.
+Those three points are true *descriptions* of the dataset. Whether they
+**explain** the null is a separate question, and F9 tests it.
 
 ---
 
-## F6. Residual limitations
+## F9. I tested my own explanation for the null, and it did not survive
+
+F8 offered a reassuring story: the graph adds nothing on IEEE-CIS because that
+dataset's fraud is single-actor rather than collusive. That is a comfortable
+thing to believe about your own method, which is exactly why it needed testing
+rather than asserting.
+
+It makes a falsifiable prediction. If the graph pays off on relational fraud,
+its advantage should **grow with how much linked-account structure a payment
+actually sits in**. So: bucket the test set by resolved cluster size — a property
+of the data available at scoring time, not a label — score both arms on identical
+rows in every bucket, and repeat across five seeds.
+
+| cluster size | rows | fraud rate | baseline | + graph | difference | effect |
+|---|---|---|---|---|---|---|
+| no cluster | 56,542 | 2.84% | 0.3686 | 0.3707 | +0.6% | 0.5 sd |
+| 2–4 accounts | 5,384 | 2.06% | 0.2968 | 0.2544 | **−14.3%** | **3.0 sd** |
+| 5–19 accounts | 7,709 | 1.78% | 0.2627 | 0.2831 | +7.8% | 1.4 sd |
+| 20–99 accounts | 6,615 | 3.57% | 0.5184 | 0.5184 | 0.0% | 0.0 sd |
+| 100+ accounts | 16,177 | 6.93% | 0.5977 | 0.6029 | +0.9% | 0.6 sd |
+
+**There is no trend.** The advantage does not grow with cluster size. Four of the
+five buckets show no measurable difference, and the only statistically
+significant result in the table is the graph being **worse** on small clusters —
+where a two-to-four account cluster gives the model a handful of noisy relational
+features and it does worse than having none.
+
+**So the explanation is withdrawn.** The structural facts in F8 remain true —
+`card1` really is a card group, Vesta's C-counters really are pre-computed entity
+aggregation — but I cannot claim they *explain* the null, because the mechanism
+they imply does not show up when measured. The honest position is narrower:
+
+> The graph produces a large, verified improvement on a benchmark whose ring
+> structure I constructed. It produces no measurable improvement on IEEE-CIS, and
+> a targeted search for the subgroup where it should have helped found nothing.
+> Why it does not transfer is **unresolved**.
+
+That is less satisfying than F8's version and it is what the evidence supports.
+A method that only works where its author built the world is a method with a real
+open question attached, and the open question belongs in the write-up rather than
+in a footnote.
+
+**What would settle it** is a real dataset with genuine collusion labels —
+confirmed abuse rings rather than transaction-level fraud flags. IEEE-CIS was the
+closest public dataset with an identity surface, and it has fraud labels but no
+ring labels. Until such a benchmark is run, the positive result should be read as
+*mechanism demonstrated under constructed conditions*, not as evidence of
+production accuracy.
+
+---
+
+## F10. The advantage survives realistic label noise
+
+Both arms train on ground-truth `is_fraud`, which production never has. So:
+corrupt a fraction of the **training** labels, leave the test labels clean, and
+see whether the gap survives. Two modes, because they are not equally realistic.
+
+**Missed fraud (`fn_only`)** — flip positives to negatives: attacks that were
+never caught and therefore train as legitimate. This is what actually happens in
+a fraud system, and it is the nastier failure conceptually, because it teaches
+the model that real attacks are fine.
+
+| noise | baseline PR-AUC | + graph | gap | effect | recall@P90 gap |
+|---|---|---|---|---|---|
+| 0% | 0.8987 | 0.9607 | +0.062 | 21.8 sd | +0.185 |
+| 5% | 0.9379 | 0.9785 | +0.041 | 12.8 sd | +0.087 |
+| 10% | 0.9451 | 0.9829 | +0.038 | 6.8 sd | +0.072 |
+| 20% | 0.9419 | 0.9785 | +0.037 | 20.2 sd | +0.065 |
+
+The gap narrows but never closes, and stays many standard deviations wide at
+every level. **A fifth of the fraud going unlabelled does not take the graph's
+advantage away.**
+
+(The absolute numbers *rising* with a little noise is real and slightly awkward:
+dropping some positives appears to offset an over-aggressive positive class
+weight in the clean-label fit. It suggests `class_weight_positive: 6.0` is tuned
+a notch too high, which is worth revisiting — noted rather than quietly smoothed
+over.)
+
+**Symmetric noise is a different story, and the reason is arithmetic.** Flipping
+labels in *both* directions at rate p, against a 2% base rate, means p×98% of
+negatives become false positives. At p=0.05 that is ~4.9% spurious positives
+against 2% real ones — the positive class is now **71% noise**. That is not a
+noisy label, it is the absence of a label. Both arms collapse (baseline 0.899 →
+0.744) and the gap becomes unstable and insignificant (0.7, 0.6, 1.8 sd across
+rates).
+
+So the honest reading is: symmetric noise at these rates is not a realistic
+stress test for a rare-event problem, and the result is reported because it was
+run, not because it says the method is fragile. The realistic mode is
+`fn_only`, and there the answer is clean.
+
+---
+
+## F11. Residual limitations
 
 Things a reviewer should push on, listed before they have to ask.
 
@@ -262,9 +346,11 @@ Things a reviewer should push on, listed before they have to ask.
    adversarial to the method. The real-data run (F8) is the counterweight, and
    it returns a null — which is why the claim is scoped to collusion-with-raw-
    identifiers rather than stated generally.
-2. **Oracle labels.** Training uses ground-truth `is_fraud`. Production labels
-   are noisy and arrive late. Label maturity is modelled (F5/V5 below); label
-   *noise* is not yet.
+2. **Oracle labels.** Training uses ground-truth `is_fraud`. Label maturity is
+   modelled (V5) and label *noise* is now tested (F10) — the advantage survives
+   20% of fraud going unlabelled. What is still untested is *systematic*
+   mislabelling correlated with the features themselves, which is the failure
+   mode a real review queue actually has.
 3. **Test-window maturity.** Only 14% of test-split labels had matured by
    `as_of_day`. Test metrics are what a reviewer would read ~45 days after the
    window closes — measurable in simulation today, not in production today.

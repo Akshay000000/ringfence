@@ -85,7 +85,10 @@ def make_contacts(rng: np.random.Generator, count: int) -> np.ndarray:
 def make_cards(rng: np.random.Generator, count: int) -> dict[str, np.ndarray]:
     return {
         "card_fingerprint": mint_ids(rng, "cfp_", count),
-        "card_last4": rng.integers(0, 10000, size=count).astype("U4"),
+        # Zero-padded so it looks like the field it stands in for. Random
+        # digits with no BIN structure -- this is a display artefact, never a
+        # link key, and nothing in the pipeline joins on it.
+        "card_last4": np.char.zfill(rng.integers(0, 10000, size=count).astype(str), 4),
         "card_network": rng.choice(CARD_NETWORKS, size=count, p=CARD_NETWORK_P),
         "card_type": rng.choice(CARD_TYPES, size=count, p=CARD_TYPE_P),
         "card_issuer": rng.choice(ISSUERS, size=count),

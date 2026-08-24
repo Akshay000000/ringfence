@@ -346,6 +346,20 @@ def cmd_seedstudy(cfg) -> None:
     _log(f"seed study written to {reports_dir() / 'seed_study.csv'}")
 
 
+def cmd_labelnoise(cfg) -> None:
+    """Does the ablation gap survive training labels that are wrong?"""
+    from .evaluation.label_noise import run as noise_run
+
+    _, splits = _matrix(cfg)
+    _log("retraining under corrupted training labels — this is slow")
+    results = noise_run(cfg, splits)
+    results.to_csv(reports_dir() / "label_noise.csv", index=False)
+    pd.set_option("display.width", 220)
+    print()
+    print(results.to_string(index=False))
+    _log(f"label-noise study written to {reports_dir() / 'label_noise.csv'}")
+
+
 def cmd_serve(cfg, host: str = "127.0.0.1", port: int = 8000) -> None:
     """Run the analyst console."""
     import uvicorn
@@ -377,6 +391,7 @@ COMMANDS = {
     "explain": cmd_explain,
     "verify": cmd_verify,
     "seedstudy": cmd_seedstudy,
+    "labelnoise": cmd_labelnoise,
     "serve": cmd_serve,
 }
 
@@ -394,7 +409,7 @@ def main(argv: list[str] | None = None) -> int:
     # is never part of it.
     # `all` is the reproducible pipeline. `serve` is long-running and
     # `seedstudy` refits 20 models, so both are opt-in.
-    optional = {"serve", "seedstudy"}
+    optional = {"serve", "seedstudy", "labelnoise"}
     steps = [s for s in COMMANDS if s not in optional] if args.command == "all" else [args.command]
     for step in steps:
         COMMANDS[step](cfg)

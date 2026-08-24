@@ -1,0 +1,6 @@
+cluster_size_bucket,rows,fraud,base_rate_%,baseline_pr_auc,graph_pr_auc,difference,relative_%,pooled_sd,effect_in_sd,verdict
+no cluster,56542,1608,2.84,0.3686,0.3707,0.0021,0.6,0.0042,0.51,no measurable difference
+2-4 accounts,5384,111,2.06,0.2968,0.2544,-0.0424,-14.3,0.0143,2.97,baseline better
+5-19 accounts,7709,137,1.78,0.2627,0.2831,0.0205,7.8,0.0146,1.4,no measurable difference
+20-99 accounts,6615,236,3.57,0.5184,0.5184,0.0,0.0,0.0169,0.0,no measurable difference
+100+ accounts,16177,1121,6.93,0.5977,0.6029,0.0052,0.9,0.0089,0.58,no measurable difference

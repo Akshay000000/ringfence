@@ -18,29 +18,56 @@ the graph earned its place with a held-out, leakage-audited ablation.
 | what it can measure | ring detection against ground-truth ring membership | whether the mechanism transfers to real money |
 | graph vs baseline | **+24.5%** recall at precision 0.95 | **no measurable difference** (0.4 pooled sd, 5 seeds) |
 
-Both are in the repo, run by the same pipeline, and both are reported. The null
-result is the more useful of the two — it is what narrows the claim from "graphs
-improve fraud detection" to something defensible. See
-**[FINDINGS.md](FINDINGS.md) § F8**.
+Both are in the repo, run by the same pipeline, and both are reported.
 
-> An identity graph pays for itself when the loss mechanism is **collusion
-> between accounts** and the merchant holds **raw identifiers** — device, card
-> token, delivery address, phone. It adds nothing measurable when the fraud is
-> single-actor, the identifiers are coarse proxies, or the entity aggregation has
-> already been engineered into the feature set.
+I then offered an explanation for the null — that IEEE-CIS fraud is single-actor
+rather than collusive — and **tested it**. If that were right, the graph's
+advantage should grow with how much linked-account structure a payment sits in.
+Bucketed by cluster size across five seeds, there is no such trend, and the only
+significant result is the graph doing *worse* on small clusters. The explanation
+was withdrawn.
 
-A merchant on raw Razorpay data is in the first situation. IEEE-CIS, whose
-`card1` is a card *group* and whose `addr1` is a billing *region*, is in the
-second.
+> The graph produces a large, verified improvement on a benchmark whose ring
+> structure I constructed. It produces no measurable improvement on IEEE-CIS, and
+> a targeted search for the subgroup where it should have helped found nothing.
+> Why it does not transfer is **unresolved**.
+
+That is the honest state of it. What would settle the question is a real dataset
+with confirmed *collusion* labels rather than transaction-level fraud flags;
+IEEE-CIS was the closest public dataset with an identity surface and it does not
+have them. Until then the positive result reads as **mechanism demonstrated under
+constructed conditions**, not as evidence of production accuracy.
+
+See **[FINDINGS.md](FINDINGS.md) § F8 and § F9**.
 
 ---
 
-## Headline result (synthetic corpus)
+## What it saves the merchant (synthetic corpus)
 
 Held-out **temporal** test split: 187,149 payments, 1,649 fraudulent (0.88%),
-42 abuse rings — **none of which appear in the training window.**
+42 abuse rings — **none of which appear in the training window.** ₹41.4L of fraud
+exposure sitting in it.
 
-### The ablation
+| | do nothing | tabular baseline | **+ identity graph** |
+|---|---|---|---|
+| total cost — fraud, chargebacks, false blocks, review | ₹41.4L | ₹15.2L | **₹6.2L** |
+| fraud caught | 0% | 87.9% | **92.2%** |
+| good customers wrongly blocked | 0 | 564 | **49** |
+| alerts sent to a human | 0 | 1.08% of traffic | **0.84%** |
+| **net saving vs doing nothing** | — | ₹26.2L | **₹35.2L** |
+
+The graph arm recovers **85% of the exposure** and blocks **11× fewer real
+customers** while catching more fraud and queueing fewer alerts. The saving holds
+between 82% and 87% across every churn assumption tested — the full sensitivity
+table ships in `reports/synthetic/graph_sensitivity.csv`, so a reviewer can
+substitute their own cost model and watch the answer move.
+
+A false positive is not free and is not the mirror of a false negative: a blocked
+good customer costs the margin on that order *plus* a probability-weighted
+lifetime-value hit. That asymmetry is what picks the operating threshold here,
+not F1.
+
+### The detection numbers underneath
 
 Same algorithm, same rows, same seed. One feature block apart.
 
@@ -51,22 +78,7 @@ Same algorithm, same rows, same seed. One feature block apart.
 | 0.80 | 0.824 | **0.950** | +15.2% |
 | 0.60 | 0.913 | **0.965** | +5.6% |
 
-PR-AUC 0.9075 → **0.9744**.
-
-### What it costs the merchant
-
-At each arm's cost-optimal operating point:
-
-| | baseline | **+ graph** |
-|---|---|---|
-| precision | 0.720 | **0.982** |
-| recall | 0.879 | **0.914** |
-| alert rate | 1.08% of traffic | **0.82%** |
-| good customers wrongly blocked | 564 | **27** |
-| net saving vs. doing nothing | ₹26.2L | **₹35.2L** |
-
-**20× fewer false blocks** at higher recall. Saving holds between 79% and 88%
-of the do-nothing loss across every churn assumption tested (`reports/graph_sensitivity.csv`).
+PR-AUC 0.9075 → **0.9712**.
 
 ### Where the lift actually comes from
 
@@ -76,7 +88,7 @@ Both arms pinned to precision 0.90:
 |---|---|---|---|
 | refund abuse | 0.428 | **0.922** | +0.494 |
 | bust-out / triangulation | 0.543 | **0.853** | +0.310 |
-| card testing | 0.973 | 0.986 | +0.013 |
+| card testing | 0.973 | 0.986 | +0.012 |
 
 **The graph adds essentially nothing to card testing** — velocity counters
 already catch it at 97%, and a card-testing burst resolves in ~2 days, faster
@@ -163,6 +175,11 @@ run-to-run standard deviation was three times that. Both apparent lifts were
 noise. `python -m ringfence.cli seedstudy` refits both arms across seeds and
 reports the gap in pooled standard deviations, and anything under 2 sd is written
 down as "no measurable difference".
+
+**The advantage survives labels being wrong.** With 20% of fraud going
+unlabelled in training — the realistic failure of any review queue — the gap
+narrows from +0.062 to +0.037 PR-AUC and stays 20 standard deviations wide
+(`python -m ringfence.cli labelnoise`, FINDINGS § F10).
 
 **Six verification checks** run in the pipeline, which refuses to report numbers
 if any fails:
@@ -263,9 +280,8 @@ the 303 queued alerts are graph-backed, and only 9 of those 159 are false
 positives.
 
 **Every alert has a what-if.** One panel shows the score with the graph and
-without it. On the alert the console opens with, that reads **0.995 with the
-graph against 0.001 without** — a refund-abuse ring the tabular baseline scored
-as entirely clean.
+without it. The console opens on the alert where those two numbers differ most —
+typically a refund-abuse ring the tabular baseline scored as essentially clean.
 
 Where no cluster resolved, the console says so in a caveat rather than inventing
 a reason. Occlusion still produces a large "contribution" for the graph block on
@@ -282,17 +298,19 @@ Published because a risk team would act on this table, not on the headline.
 
 | archetype | missed payments | missed value |
 |---|---|---|
-| bust-out | 86 | ₹2.96L |
-| refund abuse | 31 | ₹0.46L |
-| card testing | 24 | ₹26 |
+| bust-out | 78 | ₹2.44L |
+| refund abuse | 29 | ₹0.42L |
+| card testing | 21 | ₹21 |
 
 Bust-out is the remaining hole. It is the archetype deliberately built to be
 adversarial to this method — a distinct stolen card and a distinct handset per
 mule account, with the delivery address as the only link.
 
-The 27 false positives at the operating point break down as 14 accounts sharing
-no identifier at all, 8 inside family-shared-card clusters, and 5 behind a
-carrier NAT. No false-positive flood on benign shared structure.
+The 49 false positives at the operating point break down as 27 behind a carrier
+NAT, 12 sharing no identifier at all, and 10 inside family-shared-card clusters.
+Those are precisely the benign structures the generator plants to trip a naive
+ring detector — and they account for fewer than fifty alerts across 187,149
+payments. No false-positive flood.
 
 ---
 
@@ -309,6 +327,30 @@ incapable of offense:
 - no component recommends how to evade detection, and the repo contains no
   attack tooling;
 - all data is synthetic. No real cardholder data enters the system.
+
+---
+
+## Against the track brief
+
+Track 02 asks for *"a working detector, verifier or auto-responder for one class
+of loss, with measured precision and recall on a held-out test set"*, and sets
+the bar at *"honest metrics including false-positive cost. Strictly defense-only:
+anything offense capable is disqualified."*
+
+| requirement | where it is met |
+|---|---|
+| a working detector | scoring service + analyst console — `python -m ringfence.cli serve` |
+| **one** class of loss | collusive abuse rings: card testing, refund abuse, bust-out |
+| measured precision and recall | temporal held-out split, PR curves, per-archetype breakdown |
+| on a held-out test set | train days 0–89, val 90–109, test 110–149; test rings never seen in training |
+| honest metrics | negative transfer result reported (§ F8), my own explanation for it refuted (§ F9), every claim checked against seed noise |
+| **including false-positive cost** | rupee cost model where a false block costs margin × LTV churn, plus review time; sensitivity published across the arguable assumption |
+| strictly defense-only | read-only service, no write path to any payment or account, synthetic generator produces no usable credentials — see below |
+
+Two things the brief does not require but a reviewer will ask for anyway: the
+result survives 20% of fraud going unlabelled in training (§ F10), and the whole
+pipeline regenerates from a fixed seed with six leakage checks that block
+publication on failure.
 
 ---
 
