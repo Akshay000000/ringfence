@@ -1,349 +1,242 @@
-# RingFence
+<h1>RingFence</h1>
 
-**Graph-based abuse-ring detection for merchant payments.**
+**Finding fraud rings in payment data by looking at what accounts share.**
 Razorpay AI Buildathon 2026 · Track 02, AI Risk Manager
 
-Abuse rings are not detectable one transaction at a time. RingFence builds an
-identity graph over payment traffic, finds the collusion structure inside it,
-and feeds that structure back into a per-transaction risk model, then proves
-the graph earned its place with a held-out, leakage-audited ablation.
+[**Live demo**](https://ringfence-razor.vercel.app/) · [**Analyst console**](https://ringfence-razor.vercel.app/console.html) · [What broke along the way](FINDINGS.md) · [Architecture](ARCHITECTURE.md)
 
 ---
 
-## Validated on two datasets, with opposite outcomes
+## The idea in one minute
 
-| | synthetic corpus | IEEE-CIS (Vesta) |
+**The problem.** Fraudsters work in groups. One person opens twenty accounts, or
+one device tests two hundred stolen cards. Each individual payment looks
+completely normal, so a system that judges payments one at a time misses all of
+it.
+
+**What this does.** It draws a map of which accounts share a phone, a card, a
+device or a delivery address, then looks for suspicious clusters in that map and
+feeds what it finds into a fraud model.
+
+**Does it work?** On our test data, yes: it catches **92% of fraud** while
+wrongly blocking **11x fewer** real customers than a strong conventional system.
+
+**What's the catch?** On a real public dataset it gave **no improvement at all**.
+That is reported here too, along with why. It is the most useful result in the
+project.
+
+---
+
+## Results
+
+Measured on 187,149 payments the model had never seen, from a later time period
+than it was trained on. All 42 fraud rings in that test were new to it.
+
+| | Conventional system | RingFence | |
+|---|---|---|---|
+| Fraud caught | 87.9% | **92.2%** | |
+| Alerts that are real fraud | 72.0% | **96.9%** | fewer wasted investigations |
+| Good customers wrongly blocked | 564 | **49** | 11x fewer |
+| Total cost to the merchant | ₹15.2L | **₹6.2L** | from ₹41.4L if you do nothing |
+
+"Total cost" is fraud that gets through, plus chargeback fees, plus the profit
+and future value lost when a real customer is blocked, plus analyst time. The
+system is tuned to minimise that, not to win a leaderboard metric.
+
+---
+
+## The honest part
+
+We tested the same system on two datasets. It only worked on one.
+
+| | Our own data | Real public data |
 |---|---|---|
-| what it is | 458k payments, ring-labelled, benign confounders planted | 590k **real** card-not-present transactions, 3.5% fraud |
-| what it can measure | ring detection against ground-truth ring membership | whether the mechanism transfers to real money |
-| graph vs baseline | **+24.5%** recall at precision 0.95 | **no measurable difference** (0.4 pooled sd, 5 seeds) |
+| | 458k payments, fraud rings we planted | 590k real card payments (IEEE-CIS, Vesta) |
+| Result | **+24.5%** more fraud caught | **No measurable change** |
 
-Both are in the repo, run by the same pipeline, and both are reported.
+**We nearly reported a win that wasn't there.** One training run showed the map
+ahead by 2.9%. We retrained it five times with different random starts and found
+the run-to-run wobble was three times bigger than that "improvement". It was
+noise. There is now a command that makes this check mandatory before any result
+can be claimed.
 
-I then offered an explanation for the null (that IEEE-CIS fraud is single-actor
-rather than collusive) and **tested it**. If that were right, the graph's
-advantage should grow with how much linked-account structure a payment sits in.
-Bucketed by cluster size across five seeds, there is no such trend, and the only
-significant result is the graph doing *worse* on small clusters. The explanation
-was withdrawn.
+**Then we tested our own excuse.** Our explanation was that the public dataset
+contains lone fraudsters rather than organised rings, so there is no group
+structure to find. That is testable: the map should help more where accounts
+*are* heavily linked. We checked, found no such pattern, and withdrew the
+explanation.
 
-> The graph produces a large, verified improvement on a benchmark whose ring
-> structure I constructed. It produces no measurable improvement on IEEE-CIS, and
-> a targeted search for the subgroup where it should have helped found nothing.
-> Why it does not transfer is **unresolved**.
+> The method works on data we built. It does nothing on data we didn't. We
+> looked hard for the reason and did not find it. That is where the project
+> honestly stands.
 
-That is the honest state of it. What would settle the question is a real dataset
-with confirmed *collusion* labels rather than transaction-level fraud flags;
-IEEE-CIS was the closest public dataset with an identity surface and it does not
-have them. Until then the positive result reads as **mechanism demonstrated under
-constructed conditions**, not as evidence of production accuracy.
-
-See **[FINDINGS.md](FINDINGS.md) § F8 and § F9**.
+Full write-up in [FINDINGS.md](FINDINGS.md).
 
 ---
 
-## What it saves the merchant (synthetic corpus)
-
-Held-out **temporal** test split: 187,149 payments, 1,649 fraudulent (0.88%),
-42 abuse rings, **none of which appear in the training window.** ₹41.4L of fraud
-exposure sitting in it.
-
-| | do nothing | tabular baseline | **+ identity graph** |
-|---|---|---|---|
-| total cost (fraud, chargebacks, false blocks, review) | ₹41.4L | ₹15.2L | **₹6.2L** |
-| fraud caught | 0% | 87.9% | **92.2%** |
-| good customers wrongly blocked | 0 | 564 | **49** |
-| alerts sent to a human | 0 | 1.08% of traffic | **0.84%** |
-| **net saving vs doing nothing** | n/a | ₹26.2L | **₹35.2L** |
-
-The graph arm recovers **85% of the exposure** and blocks **11× fewer real
-customers** while catching more fraud and queueing fewer alerts. The saving holds
-between 82% and 87% across every churn assumption tested. The full sensitivity
-table ships in `reports/synthetic/graph_sensitivity.csv`, so a reviewer can
-substitute their own cost model and watch the answer move.
-
-A false positive is not free and is not the mirror of a false negative: a blocked
-good customer costs the margin on that order *plus* a probability-weighted
-lifetime-value hit. That asymmetry is what picks the operating threshold here,
-not F1.
-
-### The detection numbers underneath
-
-Same algorithm, same rows, same seed. One feature block apart.
-
-| precision target | baseline recall | **+ graph** | lift |
-|---|---|---|---|
-| 0.95 | 0.747 | **0.929** | **+24.5%** |
-| 0.90 | 0.754 | **0.940** | **+24.7%** |
-| 0.80 | 0.824 | **0.950** | +15.2% |
-| 0.60 | 0.913 | **0.965** | +5.6% |
-
-PR-AUC 0.9075 → **0.9712**.
-
-### Where the lift actually comes from
-
-Both arms pinned to precision 0.90:
-
-| archetype | baseline | + graph | lift |
-|---|---|---|---|
-| refund abuse | 0.428 | **0.922** | +0.494 |
-| bust-out / triangulation | 0.543 | **0.853** | +0.310 |
-| card testing | 0.973 | 0.986 | +0.012 |
-
-**The graph adds essentially nothing to card testing**. Velocity counters
-already catch it at 97%, and a card-testing burst resolves in ~2 days, faster
-than any graph snapshot can form. The graph earns its place on the slow,
-distributed attacks where no single transaction looks wrong. That is a narrower
-claim than "graphs improve fraud detection", and it is the one the data supports.
-
----
-
-## The idea in one diagram
-
-```
-   payment arrives
-         │
-         ├──────────────► tabular featuriser ──────┐
-         │                velocity counters,       │
-         │                per-entity history       │
-         │                                         ▼
-         │                                   ┌───────────┐
-         └──► identity graph, as of yesterday│ risk model│──► allow
-              ├ IDF-weighted edges           └───────────┘    review
-              ├ clique-safe communities            │          block
-              ├ cohort synchrony                   │
-              └ resolve by IDENTIFIER, not         ▼
-                just by customer              evidence:
-                                              subgraph + reasons
-```
-
-Three design decisions carry the result.
-
-**1. IDF-weighted edges.** Shared identifiers are common and mostly innocent.
-An identifier's evidential strength is `prior[type] × log(N/df(v)) / log(N)`:
-a card fingerprint on 3 accounts is loud, an IP on 400 accounts is silent.
-Hub identifiers past a per-type cap are dropped outright, not down-weighted:
-a carrier NAT block carries no information at any weight, and keeping it injects
-an 80,000-edge clique that merges the whole customer base into one blob.
-
-**2. Cohort synchrony.** A drop address and an apartment block are structurally
-identical in a graph: both are ~20 accounts on one address. What separates them
-is *when the accounts were created*. A building's residents signed up over
-years; a mule cohort signed up the same week. Without this feature the graph
-actively **hurt** bust-out recall.
-
-**3. Resolve by identifier, not by customer.** A mule account's first payment
-has no history, so a customer-keyed lookup returns nothing for exactly the
-transactions that matter most. Resolving through the drop address the payment
-ships to (an address already inside a scored cluster) lifted fraud-row
-coverage from ~40% to ~60% and flipped the ablation from −4.6% to +23.9%.
-
----
-
-## Honesty, and how it is enforced
-
-Most of the engineering in this repo is spent making the number believable
-rather than making it big.
-
-**Temporal split, not random.** Train days 0-89, validate 90-109, test 110-149.
-A random split leaks the future and lets the model memorise ring IDs instead of
-ring shape.
-
-**Graph features are strictly causal by construction.** A payment on day *d* is
-described only by a graph built from `[d-45, d)`. It never contributes an edge
-to the graph that describes it, and it can never see a ring-mate's later
-chargeback.
-
-**Label maturity is modelled.** A chargeback on a day-80 payment does not exist
-until day ~125. Every payment carries the day its outcome became observable, and
-training rows are restricted to labels that had matured by `as_of_day`. Most
-fraud demos quietly skip this.
-
-**Novel-ring reporting.** The headline recall is measured on rings the model has
-never seen. A model that only recognises rings it has already met is a lookup
-table.
-
-**The false-positive cost is a rupee figure, not a ratio.** F1 is not the
-merchant's objective. A blocked good customer costs the margin on the order
-*plus* a probability-weighted lifetime-value hit, review time is charged per
-alert, and the comparison baseline is do-nothing. The full cost curve and a
-sensitivity table across the most arguable assumption ship with the results.
-
-**Every ablation claim must clear its own noise floor.** A single-seed run on
-IEEE-CIS showed the graph ahead by +2.9%; refitting across five seeds showed the
-run-to-run standard deviation was three times that. Both apparent lifts were
-noise. `python -m ringfence.cli seedstudy` refits both arms across seeds and
-reports the gap in pooled standard deviations, and anything under 2 sd is written
-down as "no measurable difference".
-
-**The advantage survives labels being wrong.** With 20% of fraud going
-unlabelled in training, the realistic failure of any review queue, the gap
-narrows from +0.062 to +0.037 PR-AUC and stays 20 standard deviations wide
-(`python -m ringfence.cli labelnoise`, FINDINGS § F10).
-
-**Six verification checks** run in the pipeline, which refuses to report numbers
-if any fails:
-
-| check | result |
-|---|---|
-| V1 no forbidden column reaches the model | pass |
-| V2 graph window strictly earlier than the payments it scores | pass |
-| V3 **label permutation collapses the signal** | pass, permuted PR-AUC 0.0075 vs base rate 0.0088 (0.86×) |
-| V4 test rings are novel | pass, 42 rings, 0 seen in training |
-| V5 training labels had matured by `as_of_day` | pass |
-| V6 cluster statistics never reference an outcome column | pass |
-
-V3 is the one that matters: if the +24% lift were leakage, a model fitted on
-shuffled labels would still find it. It scores *below* the base rate.
-
-**[FINDINGS.md](FINDINGS.md) documents the four times this build produced a
-number that looked fine and was wrong**, including a PR-AUC of 0.99 that meant
-the benchmark was broken, and a Louvain resolution setting that was shattering
-exactly the cliques it existed to find.
-
----
-
-## Every alert is contestable
-
-A score is not actionable on its own, and "the model said so" is not something
-you can put in front of a merchant whose payment you just blocked. Each alert
-carries a reason and the evidence behind it.
-
-**Reasons** come from group occlusion, not SHAP. Features are bucketed into
-semantic groups (velocity, card fan-out, address concentration, cohort
-synchrony) and each is attributed by replacing it wholesale with what a normal
-customer looks like and re-scoring. That yields a genuine counterfactual on the
-actual model, and it removes a heavy dependency. It is also honest about its
-limit: occluding groups one at a time cannot untangle interactions, so
-contributions are ranked, never totalled.
-
-**Evidence** is the subgraph the alert came from: the linked accounts, the
-identifiers tying them together with the weight each contributed, and how this
-payment attached to the cluster. Identifier values are masked, because the
-packet is meant to travel into a ticket.
-
-A refund-abuse ring, as the system explains it:
-
-```
-Scored 1.000. Driven by the whole cluster transacted inside 4 days.
-
-  cluster cl_239 as of day 134 (12 linked accounts)
-  attached: own prior activity in this cluster
-  linked by:
-    device                     dev…bWc        12 accounts   weight 0.66
-    email (alias-normalised)   m1w…com         3 accounts   weight 0.58
-    shipping address           add…Zw2        12 accounts   weight 0.58
-    IP address                 97.…239        12 accounts   weight 0.27
-```
-
-Twelve "different customers", one handset, one delivery address, and three of
-the email addresses collapsing to the same inbox once plus-aliasing is
-normalised.
-
-`python -m ringfence.cli explain` writes these for the top alerts **and for the
-highest-scoring false positives**, which is the more useful half of the report.
-The worst one is a two-day-old account sharing a card with a 343-day-old
-account. A family, not a ring. Exactly the confounder the generator plants, and
-the system falls for it.
-
----
-
-## The analyst console
+## Try it
 
 ```bash
-python -m ringfence.cli serve      # http://127.0.0.1:8000
+pip install -r requirements.txt
+make all          # builds the data, trains, evaluates, and checks itself
+make serve        # analyst console at localhost:8000
 ```
 
-Built on Starlette rather than FastAPI. FastAPI runs on Starlette anyway, and
-for six routes its request-model machinery buys nothing, so skipping it keeps
-`pip install -r requirements.txt` short.
+`make all` takes about fifteen minutes and regenerates every number in this
+README from scratch at a fixed random seed. Nothing here is hand-copied.
 
-The service is **read-only by design**. It returns scores, reasons and evidence.
-There is no endpoint that blocks a payment, issues a refund, or mutates an
-account, because "the API had a write path but we didn't call it" is not a
-defence against the track's defense-only rule.
-
-Three decisions in the console are worth calling out, because each came from the
-first version being wrong:
-
-**The queue ranks by money at risk, not by score.** Sorting on raw score gave a
-queue of 392 card-testing probes out of 400, every one tied at 0.9998 and worth
-about five rupees each. Correct ranking, useless product. Ranking on
-`score × amount` puts a ₹29,000 bust-out order above a ₹5 probe, which is how a
-risk analyst actually triages.
-
-**Alerts are marked ◆ when linked-account evidence exists.** Ranking by money at
-risk surfaces high-value *first* orders, and a mule's first order has no
-linked-account history yet, so the flagship view is thinner on graph evidence
-than the aggregate numbers suggest. That is worth showing, not hiding: 159 of
-the 303 queued alerts are graph-backed, and only 9 of those 159 are false
-positives.
-
-**Every alert has a what-if.** One panel shows the score with the graph and
-without it. The console opens on the alert where those two numbers differ most,
-typically a refund-abuse ring the tabular baseline scored as essentially clean.
-
-Where no cluster resolved, the console says so in a caveat rather than inventing
-a reason. Occlusion still produces a large "contribution" for the graph block on
-those payments, but it is an artefact. Replacing missing cluster features with
-honest medians makes the payment look more normal, and reporting it as a top
-reason would tell an analyst the payment is suspicious *because* nothing is
-known about it, which is exactly backwards.
+To reproduce the real-data run, put `train_transaction.csv` and
+`train_identity.csv` from [IEEE-CIS](https://www.kaggle.com/competitions/ieee-fraud-detection/data)
+into `data/raw/ieee/`, then `make ieee`.
 
 ---
 
-## What it does not catch
+## How it works
 
-Published because a risk team would act on this table, not on the headline.
+Three ideas carry the result. Each one came from something breaking first.
 
-| archetype | missed payments | missed value |
+**1. Not all sharing is suspicious.** Families share a credit card. An apartment
+block shares a delivery address. Four hundred people on one mobile network share
+an IP. So each shared detail is weighted by how rare it is: a card used by three
+accounts is strong evidence, an IP used by four hundred is thrown away entirely.
+
+**2. Look at when the accounts were opened.** Twenty accounts at one address
+could be an apartment block or a fraud ring, and on a map they look identical.
+The giveaway is timing: residents signed up over years, a ring signed up the same
+week. Without this the system was actively worse at catching the most expensive
+fraud type.
+
+**3. Look up the address, not the account.** A fraudster's brand new account has
+no history, so searching for the account returns nothing exactly when it matters
+most. Looking up what the payment *touches* instead, such as the delivery address
+it ships to, took the system from slightly worse than the baseline to
+substantially better. This one change is the difference between the idea working
+and not.
+
+---
+
+## Why you can trust the numbers
+
+Fraud detection is easy to fake accidentally. Five things guard against it.
+
+**The test set is from the future.** Training uses days 0 to 89, testing uses
+days 110 to 149. A random split would let the model memorise specific fraud rings
+instead of learning what rings look like.
+
+**The map can only see the past.** A payment on day 100 is described by a map
+built from days 55 to 99. It never contributes to the map that judges it.
+
+**Labels have to have existed yet.** A chargeback on a day-80 payment does not
+arrive until day 125. Training on it is time travel, so every payment records
+when its outcome actually became knowable.
+
+**Six automated checks** run in the pipeline, which refuses to print results if
+any fail. The important one shuffles the labels randomly and confirms the model
+then finds nothing: if our result were an accident of data leakage, the shuffled
+version would still score well. It scores below chance.
+
+**No claim is made without clearing its own noise floor.** Every comparison is
+retrained across several random seeds and reported in standard deviations. Under
+two, we write "no measurable difference".
+
+<details>
+<summary><b>Precise numbers, for reviewers</b></summary>
+
+Held-out temporal test split: 187,149 payments, 1,649 fraudulent (0.88%), 42
+rings, none seen in training.
+
+| | Baseline | + graph |
 |---|---|---|
-| bust-out | 78 | ₹2.44L |
-| refund abuse | 29 | ₹0.42L |
-| card testing | 21 | ₹21 |
+| PR-AUC | 0.9075 | **0.9712** |
+| ROC-AUC | 0.9978 | 0.9991 |
+| Recall @ precision 0.95 | 0.7465 | **0.9290** (+24.5%) |
+| Recall @ precision 0.90 | 0.7538 | **0.9400** (+24.7%) |
+| Precision at cost-optimal threshold | 0.720 | **0.969** |
+| Recall at cost-optimal threshold | 0.879 | **0.922** |
+| Good customers blocked | 564 | **49** |
+| Net saving vs doing nothing | ₹26.2L | **₹35.2L** |
 
-Bust-out is the remaining hole. It is the archetype deliberately built to be
-adversarial to this method: a distinct stolen card and a distinct handset per
-mule account, with the delivery address as the only link.
+Per attack type, both arms pinned to precision 0.90:
 
-The 49 false positives at the operating point break down as 27 behind a carrier
-NAT, 12 sharing no identifier at all, and 10 inside family-shared-card clusters.
-Those are precisely the benign structures the generator plants to trip a naive
-ring detector, and they account for fewer than fifty alerts across 187,149
-payments. No false-positive flood.
+| | Baseline | + graph |
+|---|---|---|
+| Refund abuse | 0.428 | **0.922** |
+| Bust-out | 0.543 | **0.853** |
+| Card testing | 0.973 | 0.986 |
+
+Real-data run, five seeds per arm on IEEE-CIS:
+
+| Condition | Baseline | + graph | Gap |
+|---|---|---|---|
+| All features | 0.4546 ± 0.0043 | 0.4561 ± 0.0041 | +0.3%, **0.4 pooled sd** |
+| Without Vesta's entity counters | 0.2493 ± 0.0029 | 0.2523 ± 0.0223 | +1.2%, **0.2 pooled sd** |
+
+Label-noise robustness on the synthetic corpus: with 20% of fraud left unlabelled
+in training, the realistic failure of any review queue, the graph arm's advantage
+holds at +0.037 PR-AUC, which is 20 pooled standard deviations.
+
+Savings hold between 82% and 87% of the do-nothing loss across every churn
+assumption tested; the full sensitivity table is in
+`reports/synthetic/graph_sensitivity.csv`.
+
+</details>
 
 ---
 
-## Defense-only
+## What broke along the way
 
-The track disqualifies anything offense-capable. RingFence is structurally
-incapable of offense:
+Six times a result looked right and wasn't. All six are documented in
+[FINDINGS.md](FINDINGS.md) with the reasoning that caught them, not just the fix.
 
-- it consumes transaction records and emits **risk scores and evidence**; it has
-  no write path to any payment, refund, or account API;
-- the generator produces labelled abuse patterns **for evaluation only**: no
-  working card numbers, no real BIN ranges, no credentials, no bypass
-  techniques. Card "fingerprints" are opaque random tokens;
-- no component recommends how to evade detection, and the repo contains no
-  attack tooling;
-- all data is synthetic. No real cardholder data enters the system.
+| | What happened |
+|---|---|
+| A 99% score | Not a great model, a broken test. Every fraud account we generated was brand new and almost every honest one was old, so account age gave the answer away. |
+| The map made things worse | We rebuilt it every 5 days, but card-testing rings live 2 days. The map never saw them, so "has map data" came to mean "probably honest". |
+| Clustering split every ring apart | One parameter set slightly too high made the algorithm break tightly connected groups into individuals, which is exactly what a ring is. |
+| Everyone was in a cluster | Every payment from a gmail address inherited a "cluster" of 100,000 strangers. Fixing it made the results better, not worse. |
+| A 2.9% gain that was noise | Caught by retraining five times. It nearly went into the results. |
+| Our explanation didn't survive | We made a prediction, tested it, found no support, and withdrew it. |
 
 ---
 
-## The showcase site
+## What's inside
+
+```
+ringfence/
+  datasets/     one schema both datasets convert into, plus the IEEE-CIS adapter
+  datagen/      the synthetic payment corpus and the fraud rings planted in it
+  graph/        building the identity map and finding clusters in it
+  features/     signals from each payment, and signals from the map
+  model/        the two systems being compared, and the anti-cheating allowlist
+  evaluation/   scoring, cost model, verification, noise and robustness studies
+  explain/      why a payment was flagged, and the evidence behind it
+  api/          read-only service and the analyst console
+```
+
+**No neural network, no language model.** Both were considered and rejected. A
+graph neural network would memorise 4,500 examples and quietly cheat by looking
+at future connections. A language model is slower, costlier and less consistent
+at this kind of work. Classical algorithms build the map; a well-understood model
+makes the call.
+
+**It cannot attack anything.** The service only reads. There is no way to block a
+payment, issue a refund or change an account through it, and the synthetic data
+contains no usable card numbers. That is enforced by how it is built, not by a
+promise.
+
+**17 regression tests**, each guarding a bug that actually happened.
+
+---
+
+## The demo site
 
 `site/` is a static build: the showcase page plus the analyst console running
-against a baked bundle of its own API responses, so the whole demo works on a
-CDN with no backend.
+against a baked copy of its own API responses, so the whole demo works on a CDN
+with no server behind it. The console reads that bundle when it is present and
+falls back to the live service when it is not, so one page serves both.
 
-```bash
-python -m ringfence.cli site     # rebake site/data/console-data.js and site/console.html
-```
-
-The console reads from the bundle when one is present and falls back to the live
-API when it is not, so a single page serves both `ringfence.cli serve` and a
-static host. Deploy to Vercel or Render with publish directory `site` and no
-build command; see `site/README.md`.
+Deploy to Vercel or Render with publish directory `site` and no build command.
+See [`site/README.md`](site/README.md).
 
 ---
 
@@ -371,62 +264,27 @@ publication on failure.
 
 ---
 
-## Running it
+## All the commands
 
 ```bash
-pip install -r requirements.txt
-
-make all            # synthetic: data → features → train → evaluate → explain → verify
-```
-
-To reproduce the real-data run, put `train_transaction.csv` and
-`train_identity.csv` from
-[IEEE-CIS](https://www.kaggle.com/competitions/ieee-fraud-detection/data) under
-`data/raw/ieee/`, then:
-
-```bash
-python -m ringfence.cli --config configs/ieee_cis.yaml all
-python -m ringfence.cli --config configs/ieee_cis.yaml seedstudy
-```
-
-Each dataset writes to its own `data/<name>/` and `reports/<name>/`, so the two
-runs cannot overwrite each other's artefacts.
-
-Or stage by stage:
-
-```bash
-python -m ringfence.cli data       # synthetic corpus (~20s)
-python -m ringfence.cli features   # tabular + causal graph features (~5min)
-python -m ringfence.cli train      # both ablation arms (~20s)
+python -m ringfence.cli data       # build the synthetic corpus        ~20s
+python -m ringfence.cli features   # payment signals + map signals     ~5min
+python -m ringfence.cli train      # both systems, one feature apart   ~20s
 python -m ringfence.cli evaluate   # every number in this README
-python -m ringfence.cli explain    # analyst-readable alerts + evidence packets
-python -m ringfence.cli verify     # leakage and honesty checks
-python -m ringfence.cli seedstudy  # is the ablation gap bigger than seed noise?
+python -m ringfence.cli explain    # readable alerts + evidence packs
+python -m ringfence.cli verify     # the six anti-cheating checks
+python -m ringfence.cli seedstudy  # is a gap bigger than random noise?
+python -m ringfence.cli labelnoise # does it survive imperfect labels?
+python -m ringfence.cli site       # rebuild the static demo
 python -m ringfence.cli serve      # analyst console on :8000
 ```
 
-Every figure above is regenerated by `make all` from a fixed seed on a clean
-checkout. Nothing is hand-copied from a notebook. If a number cannot be
-regenerated, it does not go in the pitch.
-
-### Layout
-
-```
-ringfence/
-  datagen/     synthetic Razorpay-shaped traffic, injected rings, benign confounders
-  graph/       identity graph, IDF weighting, clique-safe community detection
-  features/    tabular featuriser and strictly-causal graph featuriser
-  model/       ablation arms, leakage allowlist
-  evaluation/  metrics, rupee cost model, verification checks
-  datasets/    canonical payment schema + the IEEE-CIS adapter
-  explain/     group-occlusion attribution and evidence subgraphs
-  api/         read-only Starlette service + single-file analyst console
-configs/       one YAML controls every knob
-reports/       generated artefacts, all regenerable
-```
+Add `--config configs/ieee_cis.yaml` to any of them to run against the real
+dataset instead. Each dataset writes to its own `data/<name>/` and
+`reports/<name>/`, so the two runs cannot overwrite each other.
 
 `configs/default.yaml` is the single source of truth. Every threshold, cost
-assumption, and ring parameter lives there with a comment explaining why it has
+assumption and ring parameter lives there with a comment explaining why it has
 the value it has.
 
 See **[ARCHITECTURE.md](ARCHITECTURE.md)** for the system design and
