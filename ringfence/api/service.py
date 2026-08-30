@@ -217,6 +217,12 @@ async def alerts(request):
         frame = frame[frame["is_fraud"]]
     elif verdict == "honest":
         frame = frame[~frame["is_fraud"]]
+    elif verdict == "graph_only":
+        # What the graph adds, judged at the threshold the system actually runs
+        # at. Compared at 0.5 this set is dominated by borderline scores the
+        # baseline nearly raised too; at the operating threshold it is the
+        # alerts the baseline would genuinely have let through.
+        frame = frame[(frame["score"] >= 0.99) & (frame["baseline_score"] < 0.99)]
     elif verdict == "graph_backed":
         # Alerts where a cluster actually resolved. Worth its own filter: ranking
         # by money at risk surfaces high-value *first* orders, and a mule's first
