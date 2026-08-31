@@ -224,7 +224,10 @@ payment, issue a refund or change an account through it, and the synthetic data
 contains no usable card numbers. That is enforced by how it is built, not by a
 promise.
 
-**17 regression tests**, each guarding a bug that actually happened.
+**39 tests**, run by CI on every push along with a 40-second end-to-end build of
+the whole pipeline. Many of them guard a specific bug that actually happened;
+others hold the project to its own claims, including one that fails the build if
+any route stops being read-only.
 
 ---
 

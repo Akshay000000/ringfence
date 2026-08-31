@@ -1,0 +1,4 @@
+split,payments,fraud,fraud_rate_%,rings,gmv,fraud_value
+train,13740,969,7.052,29,21231771,1413082
+val,4789,315,6.578,14,7557360,663999
+test,8334,275,3.3,9,12864418,203645

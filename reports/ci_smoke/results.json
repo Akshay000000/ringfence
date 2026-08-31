@@ -1,0 +1,126 @@
+{
+  "arms": {
+    "baseline": {
+      "headline": {
+        "n": 8334,
+        "positives": 275,
+        "base_rate": 0.0329973602111831,
+        "pr_auc": 0.8928948822966564,
+        "roc_auc": 0.9942122302564045
+      },
+      "operating_points": [
+        {
+          "target_precision": 0.95,
+          "recall": 0.6072727272727273,
+          "threshold": 0.9884542066226711,
+          "achieved_precision": 0.9542857142857143
+        },
+        {
+          "target_precision": 0.9,
+          "recall": 0.6254545454545455,
+          "threshold": 0.9849951149081945,
+          "achieved_precision": 0.900523560209424
+        },
+        {
+          "target_precision": 0.8,
+          "recall": 0.7709090909090909,
+          "threshold": 0.9010518441236766,
+          "achieved_precision": 0.8
+        },
+        {
+          "target_precision": 0.6,
+          "recall": 0.9054545454545454,
+          "threshold": 0.6177022683377712,
+          "achieved_precision": 0.6
+        }
+      ],
+      "cost_optimal": {
+        "block_threshold": 0.7704,
+        "blocked": 325.0,
+        "reviewed": 182.0,
+        "caught_fraud": 239.0,
+        "missed_fraud": 36.0,
+        "blocked_good": 86.0,
+        "fraud_loss_inr": 53204.096000000005,
+        "chargeback_fee_inr": 54000.0,
+        "false_block_loss_inr": 111158.93880000003,
+        "review_cost_inr": 8190.0,
+        "total_cost_inr": 226553.03480000002,
+        "do_nothing_cost_inr": 592339.5016000001,
+        "net_saving_inr": 365786.46680000005
+      },
+      "confusion_at_cost_optimal": {
+        "threshold": 0.7704,
+        "tp": 239,
+        "fp": 86,
+        "fn": 36,
+        "tn": 7973,
+        "precision": 0.7353846153846154,
+        "recall": 0.8690909090909091,
+        "f1": 0.7966666666666666,
+        "alert_rate": 0.038996880249580035
+      }
+    },
+    "graph": {
+      "headline": {
+        "n": 8334,
+        "positives": 275,
+        "base_rate": 0.0329973602111831,
+        "pr_auc": 0.9874271853548714,
+        "roc_auc": 0.9994445509819625
+      },
+      "operating_points": [
+        {
+          "target_precision": 0.95,
+          "recall": 0.9345454545454546,
+          "threshold": 0.9894764195580797,
+          "achieved_precision": 0.9518518518518518
+        },
+        {
+          "target_precision": 0.9,
+          "recall": 0.9636363636363636,
+          "threshold": 0.9318768314217601,
+          "achieved_precision": 0.9013605442176871
+        },
+        {
+          "target_precision": 0.8,
+          "recall": 0.9818181818181818,
+          "threshold": 0.8199101561488888,
+          "achieved_precision": 0.8011869436201781
+        },
+        {
+          "target_precision": 0.6,
+          "recall": 0.9927272727272727,
+          "threshold": 0.6138425858143827,
+          "achieved_precision": 0.6039823008849557
+        }
+      ],
+      "cost_optimal": {
+        "block_threshold": 0.9493,
+        "blocked": 284.0,
+        "reviewed": 218.0,
+        "caught_fraud": 263.0,
+        "missed_fraud": 12.0,
+        "blocked_good": 21.0,
+        "fraud_loss_inr": 13785.420000000002,
+        "chargeback_fee_inr": 18000.0,
+        "false_block_loss_inr": 20082.4988,
+        "review_cost_inr": 9810.0,
+        "total_cost_inr": 61677.9188,
+        "do_nothing_cost_inr": 592339.5016000001,
+        "net_saving_inr": 530661.5828000001
+      },
+      "confusion_at_cost_optimal": {
+        "threshold": 0.9493,
+        "tp": 263,
+        "fp": 21,
+        "fn": 12,
+        "tn": 8038,
+        "precision": 0.926056338028169,
+        "recall": 0.9563636363636364,
+        "f1": 0.9409660107334525,
+        "alert_rate": 0.034077273818094556
+      }
+    }
+  }
+}

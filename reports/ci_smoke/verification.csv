@@ -1,0 +1,7 @@
+check,passed,detail
+V1 no forbidden column reaches the model,True,feature allowlist is clean for both arms
+V2 graph window is strictly earlier than the payments it scores,True,"window [as_of-w, as_of) never includes the scored day"
+V4 test rings are novel,True,"9 test rings, 3 also active in training. Headline recall is reported on the novel cohort."
+V5 training labels had matured by as_of_day,True,0 training rows carry a label that did not exist at day 60
+V6 cluster statistics never reference an outcome column,True,no outcome column appears in cluster feature code
+V3 label permutation collapses the signal,True,permuted PR-AUC=0.0310 vs base rate=0.0330 (ratio 0.94x; pass if < 1.6x)

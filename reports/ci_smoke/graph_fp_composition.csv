@@ -1,0 +1,5 @@
+bucket,false_positives,share
+no_shared_identifier,10,0.4762
+nat_ip,5,0.2381
+building_addr+nat_ip,4,0.1905
+kiosk_device+nat_ip,2,0.0952

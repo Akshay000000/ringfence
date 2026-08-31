@@ -1,0 +1,104 @@
+# A deliberately tiny corpus so CI can drive every pipeline stage end to end in
+# about a minute. It is not meant to produce meaningful numbers; it is meant to
+# fail loudly if a stage stops working. The real configuration is default.yaml.
+seed: 20260905
+
+dataset:
+  kind: synthetic
+  name: ci_smoke
+
+simulation:
+  days: 60
+  as_of_day: 60
+  n_customers: 9000
+  payments_per_day_mean: 420
+  currency: INR
+  train_days: [0, 35]
+  val_days:   [36, 45]
+  test_days:  [46, 59]
+
+honest:
+  amount_lognorm_mu: 7.1
+  amount_lognorm_sigma: 0.95
+  micro_ticket_share: 0.085
+  micro_amount_range_paise: [200, 4900]
+  method_mix: {upi: 0.52, card: 0.26, netbanking: 0.10, wallet: 0.07, emi: 0.03, paylater: 0.02}
+  base_failure_rate: 0.11
+  refund_rate: 0.045
+  dispute_rate: 0.0009
+  repeat_customer_prob: 0.62
+  legacy_customer_share: 0.42
+  legacy_signup_range: [-400, -60]
+  recent_signup_range: [-60, 59]
+
+confounders:
+  shared_family_cards: 150
+  shared_nat_ips: 24
+  shared_kiosk_devices: 40
+  shared_building_addresses: 120
+
+rings:
+  aged_account_share: 0.38
+  aged_signup_range: [60, 400]
+  card_testing:
+    count: 10
+    devices_per_ring: [1, 3]
+    cards_per_ring: [30, 120]
+    amount_range: [200, 900]
+    failure_rate: 0.86
+    burst_minutes: [20, 180]
+    active_day_span: [1, 3]
+  refund_abuse:
+    count: 16
+    accounts_per_ring: [6, 26]
+    shared_addresses: [1, 3]
+    shared_devices: [1, 4]
+    orders_per_account: [1, 3]
+    refund_rate: 0.72
+    amount_multiplier: 1.15
+    active_day_span: [5, 30]
+  bust_out:
+    count: 12
+    accounts_per_ring: [8, 30]
+    shared_drop_addresses: [1, 2]
+    amount_multiplier: 1.9
+    dispute_rate: 0.55
+    dispute_lag_days: [25, 60]
+    account_age_days_max: 40
+    active_day_span: [2, 12]
+
+graph:
+  link_types:
+    card_fingerprint:      {prior: 1.00, max_df: 8}
+    device_fingerprint:    {prior: 0.85, max_df: 25}
+    shipping_address_hash: {prior: 0.75, max_df: 35}
+    contact:               {prior: 0.70, max_df: 6}
+    email_root:            {prior: 0.65, max_df: 12}
+    ip:                    {prior: 0.35, max_df: 15}
+  idf_min_weight: 0.08
+  max_identifier_degree: 500
+  louvain_resolution: 0.92
+  window_days: 30
+  snapshot_stride_days: 1   # must be 1; V2 fails otherwise, and F2 is why
+
+model:
+  algorithm: hist_gradient_boosting
+  learning_rate: 0.06
+  max_iter: 120
+  max_leaf_nodes: 31
+  l2_regularization: 1.0
+  early_stopping: true
+  validation_fraction: null
+  class_weight_positive: 6.0
+
+label_maturity:
+  dispute_window_days: 45
+  return_window_days: 30
+
+costs:
+  chargeback_fee_inr: 1500
+  fraud_recovery_rate: 0.12
+  gross_margin: 0.28
+  false_block_churn_factor: 2.6
+  manual_review_cost_inr: 45
+  review_band: [0.35, 0.80]

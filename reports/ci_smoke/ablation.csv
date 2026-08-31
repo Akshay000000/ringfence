@@ -1,0 +1,5 @@
+precision_target,baseline_recall,graph_recall,absolute_lift,relative_lift_%
+0.95,0.6073,0.9345,0.3273,53.9
+0.9,0.6255,0.9636,0.3382,54.1
+0.8,0.7709,0.9818,0.2109,27.4
+0.6,0.9055,0.9927,0.0873,9.6

@@ -1,4 +1,4 @@
-.PHONY: all data features train evaluate explain verify serve seedstudy labelnoise ieee clean test
+.PHONY: all data features train evaluate explain verify serve seedstudy labelnoise ieee site clean test ci
 
 all: data features train evaluate explain verify
 
@@ -37,6 +37,13 @@ ieee:
 
 test:
 	python3 -m pytest tests -q
+
+# What CI runs: the unit tests, then a tiny end-to-end build. Unit tests cannot
+# catch a pipeline that no longer runs, and `make all` is too slow for a hook.
+ci:
+	python3 -m pytest tests -q
+	python3 -m ringfence.cli --config configs/ci_smoke.yaml all
+	python3 -m ringfence.cli --config configs/ci_smoke.yaml verify
 
 clean:
 	rm -rf data/*/ reports/*/ site/data/

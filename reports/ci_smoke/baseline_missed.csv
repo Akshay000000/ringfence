@@ -1,0 +1,4 @@
+archetype,missed_payments,missed_inr,median_score,median_amount_inr
+bust_out,2,6028.0,0.1474,3014.0
+card_testing,3,0.0,0.6188,5.0
+refund_abuse,31,54418.0,0.4344,1167.0
