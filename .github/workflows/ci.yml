@@ -32,3 +32,10 @@ jobs:
 
       - name: Leakage and honesty checks must pass
         run: python -m ringfence.cli --config configs/ci_smoke.yaml verify
+
+      # The merchant-facing note is the one place a language model is used, so
+      # the build fails if any draft stops passing its own fact check. With no
+      # key configured this exercises the template path, which is the floor the
+      # system is never allowed to drop below.
+      - name: Drafted notes must pass their fact check
+        run: python -m ringfence.cli --config configs/ci_smoke.yaml narrative

@@ -161,7 +161,7 @@ improve fraud detection," and it is the one the data supports.
 
 ---
 
-## F7. A pruned identifier was still resolving payments into clusters
+## F6. A pruned identifier was still resolving payments into clusters
 
 **Symptom.** On IEEE-CIS, **100% of transactions** resolved into a cluster, fraud
 and honest alike, and the median cluster held 153 accounts. Those are not rings,
@@ -196,7 +196,7 @@ re-running both datasets to check rather than assuming.
 
 ---
 
-## F8. On real data the graph adds nothing measurable, and that is the finding
+## F7. On real data the graph adds nothing measurable, and that is the finding
 
 RingFence was validated a second time on **IEEE-CIS** (Vesta), 590,540 real
 card-not-present transactions, 3.5% fraud, temporal split, same pipeline and same
@@ -231,7 +231,7 @@ don't work":
    fraud. It has no ring labels because it largely has no rings. RingFence
    detects *collusion structure*; asking it to improve single-actor fraud
    detection is asking the wrong question of it.
-3. **There is barely any ring structure to find.** Quantified in F11: only 1.31%
+3. **There is barely any ring structure to find.** Quantified in F10: only 1.31%
    of test fraud sits in a majority-fraud cluster, which is below the resolution
    of the measurement.
 4. **The entity aggregation was already done.** Vesta's `C1` to `C14` are counts of
@@ -240,13 +240,13 @@ don't work":
    ablation gave them to both arms.
 
 Those three points are true *descriptions* of the dataset. Whether they
-**explain** the null is a separate question, and F9 tests it.
+**explain** the null is a separate question, and F8 tests it.
 
 ---
 
-## F9. I tested my own explanation for the null, and it did not survive
+## F8. I tested my own explanation for the null, and it did not survive
 
-F8 offered a reassuring story: the graph adds nothing on IEEE-CIS because that
+F7 offered a reassuring story: the graph adds nothing on IEEE-CIS because that
 dataset's fraud is single-actor rather than collusive. That is a comfortable
 thing to believe about your own method, which is exactly why it needed testing
 rather than asserting.
@@ -271,7 +271,7 @@ significant result in the table is the graph being **worse** on small clusters,
 where a two-to-four account cluster gives the model a handful of noisy relational
 features and it does worse than having none.
 
-**So the explanation is withdrawn.** The structural facts in F8 remain true.
+**So the explanation is withdrawn.** The structural facts in F7 remain true.
 `card1` really is a card group, Vesta's C-counters really are pre-computed entity
 But I cannot claim they *explain* the null, because the mechanism
 they imply does not show up when measured. The honest position is narrower:
@@ -281,7 +281,7 @@ they imply does not show up when measured. The honest position is narrower:
 > a targeted search for the subgroup where it should have helped found nothing.
 > Why it does not transfer is **unresolved**.
 
-That is less satisfying than F8's version and it is what the evidence supports.
+That is less satisfying than F7's version and it is what the evidence supports.
 A method that only works where its author built the world is a method with a real
 open question attached, and the open question belongs in the write-up rather than
 in a footnote.
@@ -295,7 +295,7 @@ production accuracy.
 
 ---
 
-## F10. The advantage survives realistic label noise
+## F9. The advantage survives realistic label noise
 
 Both arms train on ground-truth `is_fraud`, which production never has. So:
 corrupt a fraction of the **training** labels, leave the test labels clean, and
@@ -338,7 +338,114 @@ run, not because it says the method is fragile. The realistic mode is
 
 ---
 
-## F11. Residual limitations
+## F10. The structure is real on real data, and too small to measure
+
+F7 found no lift on IEEE-CIS. F8 offered an explanation and then withdrew it,
+which left the null sitting there unexplained. Both had skipped the question
+underneath: **does fraud concentrate inside the clusters the graph finds, more
+than it would if account membership were random?**
+
+That is answerable without any model. Take the clusters exactly as the graph
+produced them, shuffle the fraud labels across accounts 400 times, and compare
+the real concentration of fraud in majority-fraud clusters against the null
+distribution. Cluster sizes are held fixed, so the test asks only whether
+membership carries information, not whether big clusters exist.
+
+| dataset | concentration | by chance | distance | p |
+|---|---|---|---|---|
+| synthetic | 31.1% | 0.0% | 1314 sd | < 0.0025 |
+| IEEE-CIS | 2.6% | 0.4% | 9.2 sd | 0.0025 |
+
+**Both are real.** At 9.2 sd the IEEE-CIS clusters are not an artefact: there
+genuinely are accounts that share identifiers and share fraud. F8's withdrawn
+explanation was wrong to imply the real data has no rings at all.
+
+**And it does not matter.** Only 42 of the 3,213 fraudulent test payments sit in
+a majority-fraud cluster. Even in the impossible best case, where the graph
+catches every one of those and the baseline catches none, the ceiling on the
+improvement is **1.31% of all fraud**. Against the synthetic corpus, the same
+number is 300 of 1,649, or 18.2%.
+
+The noise floor measured in F7 is +/- 0.0043 PR-AUC. The observed gap was
++0.0015.
+
+> The largest effect the data could contain is smaller than the smallest effect
+> the measurement could resolve.
+
+So the null is explained, and it is not a failure of the method. There was
+almost nothing there to find. It also sharpens the scope of the claim: the
+precondition is not "collusion exists" but "enough collusion to matter", and
+that is now a number rather than an intuition.
+
+Reproduce: `python -m ringfence.cli --config configs/ieee_cis.yaml structure`.
+
+---
+
+## F11. A language model, in exactly one place, on a leash
+
+Everything up to here is deliberately model-free, and the reasoning holds:
+detection over structured data at scale is not a language task, and putting a
+model there would be decoration that costs latency and determinism.
+
+The last step is different. Once a payment is held, somebody writes to the
+merchant. That is a writing task, and doing it with string concatenation
+produces the stiff, faintly threatening prose that makes support queues long.
+
+The problem is that this is also the single worst place in the system to
+hallucinate. A note sent to a merchant, or attached to a chargeback
+representment, that states a wrong amount or invents a linked account is worse
+than no note at all.
+
+So the design is not "ask a model to explain the alert". It is:
+
+1. assemble a **closed set of facts** from the evidence packet the alert already
+   produced, with hub identifiers that the graph pruned excluded, because letting
+   `gmail.com` back in as written evidence would assert the exact thing the graph
+   threw away;
+2. ask the model to rephrase **only those facts**;
+3. **verify** the draft against the fact set: every number in it must appear in
+   the facts, the payment reference must survive intact, and a short list of
+   accusatory words is banned, because the system holds payments for review and
+   does not accuse people;
+4. **fall back** to a deterministic template whenever the check fails, or when no
+   model is configured at all.
+
+The verifier is the engineering, not the prompt. A prompt is a request; a
+verifier is a guarantee. The template is the floor the system can never drop
+below, and the model is only ever allowed to make it read better.
+
+Three smaller things fell out of building it, and all three came from reading
+the drafts rather than the code.
+
+The **closing sentence** originally read "based on the account's connections to
+other accounts" on every note. That is false on a payment held purely on
+velocity, so it is now conditional on whether any link actually resolved.
+
+The **analyst vocabulary leaked into the merchant note**. The first drafts told
+a shop owner that their payout was held because of "high-confidence shared
+identifiers (combined edge weight 1.34)" and "cluster decline rate 0%". Both are
+correct and both are jargon deployed at somebody who cannot check it. Purely
+internal reasons are now dropped rather than paraphrased, because a reason a
+merchant cannot check is not a reason worth giving, and "cluster", which is our
+word, becomes "linked accounts", which is theirs.
+
+And **generic reasons had to go**. When no evidence line clears the abnormality
+floor, the reason detail is the group name restated, so notes were going out
+saying "Why: payment context". That says nothing while looking like it says
+something, which is the specific failure this whole feature is supposed to avoid.
+
+The repo ships with no key, so the default path for anyone cloning it, and the
+path CI exercises, is the template.
+
+Seventeen tests cover it, and the one that justifies shipping a model at all is the
+one that feeds the verifier a draft claiming "we recovered Rs 4,500" and asserts
+that the number never reaches the output.
+
+Reproduce: `python -m ringfence.cli narrative`.
+
+---
+
+## F12. Residual limitations
 
 Things a reviewer should push on, listed before they have to ask.
 
@@ -346,11 +453,11 @@ Things a reviewer should push on, listed before they have to ask.
    designed, so the +24.5% is measured on a world I built. Mitigations: benign
    confounders that deliberately mimic ring structure; three archetypes with
    deliberately different topologies; a bust-out archetype built to be
-   adversarial to the method. The real-data run (F8) is the counterweight, and
+   adversarial to the method. The real-data run (F7) is the counterweight, and
    it returns a null, which is why the claim is scoped to collusion-with-raw-
    identifiers rather than stated generally.
 2. **Oracle labels.** Training uses ground-truth `is_fraud`. Label maturity is
-   modelled (V5) and label *noise* is now tested (F10): the advantage survives
+   modelled (V5) and label *noise* is now tested (F9): the advantage survives
    20% of fraud going unlabelled. What is still untested is *systematic*
    mislabelling correlated with the features themselves, which is the failure
    mode a real review queue actually has.
@@ -363,6 +470,13 @@ Things a reviewer should push on, listed before they have to ask.
 5. **No intra-day graph.** A payment is scored against the graph as of the
    start of its day. A true streaming system would include earlier events from
    the same day; that would raise coverage further and is the obvious next step.
+6. **The note verifier checks tokens, not meaning.** It catches invented
+   numbers, an altered payment reference and accusatory vocabulary, which are
+   the failures that actually reach a card scheme. It cannot catch a draft that
+   rearranges true facts into a misleading emphasis, because that requires
+   understanding the claim rather than checking it. The template is the floor
+   under that gap, not a fix for it, and a production deployment should put a
+   human on the first few hundred drafts before trusting the model path.
 
 ---
 

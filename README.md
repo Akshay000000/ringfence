@@ -225,22 +225,31 @@ ringfence/
   features/     signals from each payment, and signals from the map
   model/        the two systems being compared, and the anti-cheating allowlist
   evaluation/   scoring, cost model, verification, noise and robustness studies
-  explain/      why a payment was flagged, and the evidence behind it
+  explain/      why a payment was flagged, the evidence behind it, and the note sent out
   api/          read-only service and the analyst console
 ```
 
-**No neural network, no language model.** Both were considered and rejected. A
-graph neural network would memorise 4,500 examples and quietly cheat by looking
-at future connections. A language model is slower, costlier and less consistent
-at this kind of work. Classical algorithms build the map; a well-understood model
-makes the call.
+**No neural network. One language model, in one place, on a leash.** A graph
+neural network was considered and rejected: it would memorise 4,500 examples and
+quietly cheat by looking at future connections. Classical algorithms build the
+map, and a well-understood model makes the call.
+
+The single place a language model earns its keep is the last one. Once a payment
+is held, somebody has to write to the merchant, and that is a writing task, not a
+detection task. So RingFence drafts that note with a model, and then refuses to
+trust it: every number in the draft is checked back against the evidence packet,
+the payment reference must survive intact, accusatory words are banned, and a
+draft that fails any of those is thrown away in favour of a deterministic
+template. The template is the floor. The model can only make it read better,
+never make it say more. With no API key configured, which is how the repo ships
+and how CI runs it, the template path is the only path.
 
 **It cannot attack anything.** The service only reads. There is no way to block a
 payment, issue a refund or change an account through it, and the synthetic data
 contains no usable card numbers. That is enforced by how it is built, not by a
 promise.
 
-**39 tests**, run by CI on every push along with a 40-second end-to-end build of
+**56 tests**, run by CI on every push along with a 40-second end-to-end build of
 the whole pipeline. Many of them guard a specific bug that actually happened;
 others hold the project to its own claims, including one that fails the build if
 any route stops being read-only.
@@ -253,6 +262,11 @@ any route stops being read-only.
 against a baked copy of its own API responses, so the whole demo works on a CDN
 with no server behind it. The console reads that bundle when it is present and
 falls back to the live service when it is not, so one page serves both.
+
+Each case in the console ends with the note that would go to the merchant,
+drafted from the evidence on screen and then checked back against it. The
+fact check is visible in the panel: it says whether you are reading a model
+draft or the template that gets used when a draft fails.
 
 Deploy to Vercel or Render with publish directory `site` and no build command.
 See [`site/README.md`](site/README.md).
@@ -272,12 +286,12 @@ anything offense capable is disqualified."*
 | **one** class of loss | collusive abuse rings: card testing, refund abuse, bust-out |
 | measured precision and recall | temporal held-out split, PR curves, per-archetype breakdown |
 | on a held-out test set | train days 0-89, val 90-109, test 110-149; test rings never seen in training |
-| honest metrics | negative transfer result reported (§ F8), my own explanation for it refuted (§ F9), every claim checked against seed noise |
+| honest metrics | negative transfer result reported (§ F7), my own explanation for it refuted (§ F8), every claim checked against seed noise |
 | **including false-positive cost** | rupee cost model where a false block costs margin × LTV churn, plus review time; sensitivity published across the arguable assumption |
 | strictly defense-only | read-only service, no write path to any payment or account, synthetic generator produces no usable credentials (see below) |
 
 Two things the brief does not require but a reviewer will ask for anyway: the
-result survives 20% of fraud going unlabelled in training (§ F10), and the whole
+result survives 20% of fraud going unlabelled in training (§ F9), and the whole
 pipeline regenerates from a fixed seed with six leakage checks that block
 publication on failure.
 
@@ -294,6 +308,8 @@ python -m ringfence.cli explain    # readable alerts + evidence packs
 python -m ringfence.cli verify     # the six anti-cheating checks
 python -m ringfence.cli seedstudy  # is a gap bigger than random noise?
 python -m ringfence.cli labelnoise # does it survive imperfect labels?
+python -m ringfence.cli structure  # is there any ring structure here at all?
+python -m ringfence.cli narrative  # draft merchant notes, then fact-check them
 python -m ringfence.cli site       # rebuild the static demo
 python -m ringfence.cli serve      # analyst console on :8000
 ```

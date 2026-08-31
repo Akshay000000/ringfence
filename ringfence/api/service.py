@@ -23,6 +23,7 @@ from starlette.routing import Route
 
 from ..config import load_config, reports_dir
 from ..explain.evidence import EvidenceBuilder
+from ..explain.narrative import draft_for
 from ..explain.reasons import attribute, build_reference, narrate
 from ..io import read_table
 from ..model.dataset import split_frames
@@ -261,6 +262,13 @@ async def alert_detail(request):
     except Exception as exc:  # pragma: no cover - evidence is best-effort
         evidence = {"error": str(exc)}
     payload["evidence"] = evidence
+
+    # The merchant-facing note. Written from the payload above and nothing else,
+    # then fact-checked; see ringfence/explain/narrative.py for why.
+    try:
+        payload["narrative"] = draft_for(payload)
+    except Exception as exc:  # pragma: no cover - a note is never load-bearing
+        payload["narrative"] = {"text": "", "source": "unavailable", "note": str(exc)}
     return JSONResponse(payload)
 
 

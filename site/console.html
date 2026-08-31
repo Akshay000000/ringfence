@@ -161,6 +161,30 @@
   .reason .rbar.tab { background: var(--series-baseline); }
   .reason .detail { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
 
+  .note {
+    border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px;
+    background: var(--surface-1); margin: 4px 0 4px;
+  }
+  .note pre {
+    margin: 0; font: inherit; font-size: 12.5px; line-height: 1.6;
+    white-space: pre-wrap; color: var(--text-primary);
+  }
+  .note .prov {
+    display: flex; gap: 8px; align-items: center; margin-top: 12px;
+    font-size: 11px; color: var(--text-muted);
+    border-top: 1px solid var(--border); padding-top: 10px;
+  }
+  .note .prov .tag {
+    border: 1px solid var(--border); border-radius: 999px; padding: 1px 8px;
+    letter-spacing: 0.03em; text-transform: uppercase; font-size: 10px;
+  }
+  .note button {
+    margin-left: auto; font: inherit; font-size: 11px; cursor: pointer;
+    background: none; color: var(--text-secondary);
+    border: 1px solid var(--border); border-radius: 5px; padding: 3px 9px;
+  }
+  .note button:hover { color: var(--text-primary); }
+
   .ev { display: grid; grid-template-columns: 300px 1fr; gap: 18px; align-items: start; }
   @media (max-width: 780px) { .ev { grid-template-columns: 1fr; } }
   .attach { font-size: 12px; color: var(--text-secondary); margin: 0 0 12px; }
@@ -431,6 +455,20 @@ function subgraph(ev) {
     </div>`;
 }
 
+function esc(text) {
+  return String(text == null ? '' : text)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function copyNote(button) {
+  const text = document.getElementById('noteText');
+  if (!text) return;
+  navigator.clipboard.writeText(text.textContent).then(() => {
+    button.textContent = 'Copied';
+    setTimeout(() => { button.textContent = 'Copy'; }, 1400);
+  }).catch(() => { button.textContent = 'Copy failed'; });
+}
+
 async function selectAlert(id) {
   selected = id;
   syncHash(id);
@@ -469,6 +507,18 @@ async function selectAlert(id) {
         <div class="rbar ${r.from_graph ? '' : 'tab'}" style="width:${Math.max(2, (r.contribution / maxC) * 100).toFixed(1)}%"></div>
 ${r.generic ? '' : `<div class="detail">${r.detail}</div>`}
       </div>`).join('') || '<p class="cap">No dominant driver.</p>'}
+
+    ${a.narrative && a.narrative.text ? `
+      <h2 style="margin-top:22px">Note to the merchant</h2>
+      <p class="cap">Drafted from the facts above, then checked back against them. Every number in this note has to appear in the evidence or the draft is thrown away.</p>
+      <div class="note">
+        <pre id="noteText">${esc(a.narrative.text)}</pre>
+        <div class="prov">
+          <span class="tag">${a.narrative.source === 'model' ? 'model draft' : 'template'}</span>
+          <span>${esc(a.narrative.note || '')}</span>
+          <button onclick="copyNote(this)">Copy</button>
+        </div>
+      </div>` : ''}
 
     ${ev ? `
       <h2 style="margin-top:22px">Evidence</h2>

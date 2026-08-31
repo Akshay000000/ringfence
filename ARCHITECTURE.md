@@ -209,7 +209,7 @@ assumptions and see the answer move.
 ## 8. Explainability
 
 A score is not actionable and "the model said so" is not something to put in
-front of a merchant whose payment was blocked. Two layers, in
+front of a merchant whose payment was blocked. Three layers, in
 `ringfence/explain/`.
 
 **Reasons, by group occlusion rather than SHAP.** Features are bucketed into
@@ -234,6 +234,25 @@ weight each contributed, and how this payment attached (its own history, or
 inherited through an identifier it touched). Identifier values are masked,
 because the packet is meant to travel into a ticket. Identifiers pruned as hubs
 are listed as pruned and are never drawn as edges, since they contributed none.
+
+**A merchant-facing note, drafted by a model that cannot invent anything.**
+The first two layers produce an evidence packet for an analyst. Somebody still
+has to write to the merchant, and that is the one genuinely linguistic step in
+the system, so it is the one place a language model is used.
+
+It is used behind a verifier rather than trusted. `narrative.py` assembles a
+closed fact set from the packet, excluding identifiers the graph pruned as hubs;
+prompts the model to rephrase only those facts; then checks the draft back
+against them. Every number must appear in the fact set, the payment reference
+must survive intact, and accusatory vocabulary is rejected outright, because the
+system holds payments for review and does not accuse people. A draft that fails
+any check is discarded in favour of a deterministic template.
+
+The template is therefore the floor, not the fallback of last resort: the system
+is never worse than it, and the model can only make it read better. The repo
+ships with no key, so the template path is the default and is what CI exercises.
+Configuration is by environment (`RINGFENCE_LLM_KEY`, `RINGFENCE_LLM_BASE`,
+`RINGFENCE_LLM_MODEL`) against any OpenAI-compatible endpoint.
 
 ## 9. Serving
 

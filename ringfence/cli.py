@@ -390,6 +390,80 @@ def cmd_structure(cfg) -> None:
     _log(f"written to {reports_dir() / 'structure_test.csv'}")
 
 
+def cmd_narrative(cfg, n: int = 6) -> None:
+    """Draft merchant-facing notes for explained alerts, and fact-check them.
+
+    Reads `explanations.json`, so it works off whatever `explain` last produced
+    for this config rather than rebuilding anything. Runs the template path
+    unless a language model is configured by environment, which is the point:
+    the template is the guaranteed floor and the model can only ever make it
+    read better.
+
+    Exits non-zero if any draft fails its own check, so CI treats a note that
+    states something the evidence does not support as a build failure.
+    """
+    import json as _json
+
+    from .explain.narrative import draft_for, facts_from_alert, verify
+
+    path = reports_dir() / "explanations.json"
+    if not path.exists():
+        raise SystemExit(f"{path} not found; run `explain` first")
+    records = _json.loads(path.read_text(encoding="utf-8"))[:n]
+
+    payments = read_table("payments").set_index("payment_id", drop=False)
+    _log(f"drafting merchant notes for {len(records)} alerts")
+
+    rows = []
+    for record in records:
+        payment_id = record["payment_id"]
+        alert = dict(record)
+        try:
+            payment = payments.loc[payment_id]
+            alert["amount_inr"] = float(payment["amount"]) / 100.0
+            alert["account_age_days"] = _clean_int(payment.get("account_age_days"))
+        except Exception:
+            alert["amount_inr"] = 0.0
+
+        draft = draft_for(alert)
+        ok, problems = verify(draft["text"], facts_from_alert(alert))
+
+        print()
+        print("=" * 74)
+        print(f"  {payment_id}   Rs {alert['amount_inr']:,.0f}   "
+              f"score {float(record.get('score', 0)):.3f}   [{draft['source']}]")
+        print("=" * 74)
+        print(draft["text"])
+        print()
+        print(f"  fact check: {'PASS' if ok else 'FAIL - ' + '; '.join(problems)}")
+
+        rows.append({
+            "payment_id": payment_id,
+            "verdict": record.get("verdict"),
+            "source": draft["source"],
+            "fact_check": "pass" if ok else "fail",
+            "problems": "; ".join(problems),
+            "characters": len(draft["text"]),
+        })
+
+    frame = pd.DataFrame(rows)
+    frame.to_csv(reports_dir() / "narratives.csv", index=False)
+    print()
+    print(f"  {(frame['fact_check'] == 'pass').sum()}/{len(frame)} drafts passed the fact check")
+    _log(f"written to {reports_dir() / 'narratives.csv'}")
+    if (frame["fact_check"] != "pass").any():
+        raise SystemExit("a draft failed its own fact check - do not ship it")
+
+
+def _clean_int(value):
+    try:
+        if value is None or pd.isna(value):
+            return None
+        return int(value)
+    except Exception:
+        return None
+
+
 def cmd_site(cfg) -> None:
     """Bake the console into a static bundle the showcase site can serve."""
     from .api.export_static import write
@@ -434,6 +508,7 @@ COMMANDS = {
     "labelnoise": cmd_labelnoise,
     "site": cmd_site,
     "structure": cmd_structure,
+    "narrative": cmd_narrative,
     "serve": cmd_serve,
 }
 
@@ -451,7 +526,7 @@ def main(argv: list[str] | None = None) -> int:
     # is never part of it.
     # `all` is the reproducible pipeline. `serve` is long-running and
     # `seedstudy` refits 20 models, so both are opt-in.
-    optional = {"serve", "seedstudy", "labelnoise", "site", "structure"}
+    optional = {"serve", "seedstudy", "labelnoise", "site", "structure", "narrative"}
     steps = [s for s in COMMANDS if s not in optional] if args.command == "all" else [args.command]
     for step in steps:
         COMMANDS[step](cfg)

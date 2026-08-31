@@ -22,6 +22,7 @@ from pathlib import Path
 import pandas as pd
 
 from ..config import REPO_ROOT
+from ..explain.narrative import draft_for
 from .service import _row_payload, state
 
 
@@ -53,6 +54,10 @@ def build(limit: int | None = None) -> dict:
         except Exception:
             evidence = None
         detail["evidence"] = evidence
+        try:
+            detail["narrative"] = draft_for(detail)
+        except Exception:
+            detail["narrative"] = None
 
         with_graph = float(row["score"])
         without_graph = float(row["baseline_score"])

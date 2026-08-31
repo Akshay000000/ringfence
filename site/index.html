@@ -650,7 +650,11 @@ html:not(.js) .rv{opacity:1;transform:none}
       <img class="lt" src="assets/console-light.png" alt="The analyst console, showing the alert queue, the reasons behind a score, and the network of linked accounts." loading="lazy">
       <img class="dk" src="assets/console-dark.png" alt="The analyst console in dark mode." loading="lazy">
     </div>
-    <p class="lead" style="margin-top:var(--s3)">There is a filter called <b>"Caught only by the
+    <p class="lead" style="margin-top:var(--s3)">Every case ends with <b>the note that would go to
+      the merchant</b>, written from the evidence on screen and then checked back against it. If a
+      number in the note is not in the evidence, the draft is thrown away and a plain template is
+      sent instead. The panel says which one you are reading.</p>
+    <p class="lead">There is a filter called <b>"Caught only by the
       map"</b>: the 50 alerts RingFence raises that a conventional system would have let through
       entirely. 48 of the 50 are genuine fraud. That is the whole argument in one click.</p>
     <p class="lead">The queue is sorted by <b>money at risk</b>, not by
@@ -675,18 +679,25 @@ html:not(.js) .rv{opacity:1;transform:none}
     <div class="figs">
       <div class="fig"><div class="n serif">2</div><div class="l">datasets tested</div>
         <div class="d">one ours, one real, both reported</div></div>
-      <div class="fig"><div class="n serif">17</div><div class="l">regression tests</div>
+      <div class="fig"><div class="n serif">56</div><div class="l">regression tests</div>
         <div class="d">each one guards a real bug</div></div>
       <div class="fig"><div class="n serif">6</div><div class="l">anti-cheating checks</div>
         <div class="d">results are blocked if any fail</div></div>
       <div class="fig"><div class="n serif">1</div><div class="l">command rebuilds everything</div>
         <div class="d">from raw data to final numbers</div></div>
     </div>
-    <p class="lead" style="margin-top:var(--s4)"><b>No neural network. No language model.</b>
-      Both were considered and rejected. A graph neural network would memorise 4,500 examples and
-      quietly cheat by looking at future connections. A language model is slower, costlier and
-      less consistent at this kind of work. Classical algorithms build the map; a well-understood
-      model makes the call. That is a deliberate choice, not a shortcut.</p>
+    <p class="lead" style="margin-top:var(--s4)"><b>No neural network. One AI model, in one
+      place, on a leash.</b> A graph neural network was considered and rejected: it would memorise
+      4,500 examples and quietly cheat by looking at future connections. Classical algorithms build
+      the map and a well-understood model makes the call. That is a deliberate choice, not a
+      shortcut.</p>
+    <p class="lead">The single place an AI writing model earns its place is the last one. Once a
+      payment is held, somebody has to write to the merchant, and that is a writing job. So
+      RingFence drafts that note with a model and then refuses to trust it: every number in the
+      draft is checked back against the evidence, the payment reference has to survive intact, and
+      accusing language is thrown out. A draft that fails any of those is discarded and a plain
+      template is sent instead. The template is the floor. The model can only make it read better,
+      never make it say more.</p>
     <div class="chips">
       <span class="chip">Python</span><span class="chip">scikit-learn</span>
       <span class="chip">NetworkX</span><span class="chip">SciPy</span>
