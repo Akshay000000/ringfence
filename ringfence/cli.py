@@ -360,6 +360,36 @@ def cmd_labelnoise(cfg) -> None:
     _log(f"label-noise study written to {reports_dir() / 'label_noise.csv'}")
 
 
+def cmd_structure(cfg) -> None:
+    """Is there any collusion structure in this dataset to find at all?"""
+    from .evaluation.structure import permutation_test
+
+    matrix, splits = _matrix(cfg)
+    test = splits["test"]
+    _log("permutation test on cluster fraud concentration")
+    result = permutation_test(test)
+
+    total_fraud = int(test["is_fraud"].sum())
+    sub = test[test["cluster"].fillna("").astype(str) != ""]
+    per = sub.groupby("cluster")["is_fraud"].agg(["sum", "size"])
+    per = per[per["size"] >= 2]
+    hot = per[per["sum"] / per["size"] > 0.5]
+    in_hot = int(hot["sum"].sum())
+    result["fraud_in_majority_fraud_clusters"] = in_hot
+    result["ceiling_share_of_all_fraud"] = round(in_hot / total_fraud, 4) if total_fraud else None
+
+    frame = pd.DataFrame([result])
+    frame.to_csv(reports_dir() / "structure_test.csv", index=False)
+    print()
+    for key, value in result.items():
+        print(f"  {key:<36} {value}")
+    print()
+    print(f"  Ceiling: even if the graph caught every payment in a majority-fraud")
+    print(f"  cluster and the baseline caught none, that is {in_hot}/{total_fraud} "
+          f"= {100 * in_hot / max(total_fraud, 1):.2f}% of all fraud.")
+    _log(f"written to {reports_dir() / 'structure_test.csv'}")
+
+
 def cmd_site(cfg) -> None:
     """Bake the console into a static bundle the showcase site can serve."""
     from .api.export_static import write
@@ -403,6 +433,7 @@ COMMANDS = {
     "seedstudy": cmd_seedstudy,
     "labelnoise": cmd_labelnoise,
     "site": cmd_site,
+    "structure": cmd_structure,
     "serve": cmd_serve,
 }
 
@@ -420,7 +451,7 @@ def main(argv: list[str] | None = None) -> int:
     # is never part of it.
     # `all` is the reproducible pipeline. `serve` is long-running and
     # `seedstudy` refits 20 models, so both are opt-in.
-    optional = {"serve", "seedstudy", "labelnoise", "site"}
+    optional = {"serve", "seedstudy", "labelnoise", "site", "structure"}
     steps = [s for s in COMMANDS if s not in optional] if args.command == "all" else [args.command]
     for step in steps:
         COMMANDS[step](cfg)

@@ -1,0 +1,2 @@
+clustered_rows,clusters,fraud_in_clustered_rows,observed_concentration,null_mean,null_sd,z_score,p_value,permutations,verdict,fraud_in_majority_fraud_clusters,ceiling_share_of_all_fraud
+35885,2774,1605,0.0262,0.0038,0.0024,9.16,0.0025,400,"structure present: fraud is more concentrated than chance (9.2 sd), so the clusters do carry information",42,0.0131

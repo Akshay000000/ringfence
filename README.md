@@ -60,15 +60,31 @@ the run-to-run wobble was three times bigger than that "improvement". It was
 noise. There is now a command that makes this check mandatory before any result
 can be claimed.
 
-**Then we tested our own excuse.** Our explanation was that the public dataset
-contains lone fraudsters rather than organised rings, so there is no group
-structure to find. That is testable: the map should help more where accounts
-*are* heavily linked. We checked, found no such pattern, and withdrew the
-explanation.
+**Then we tested our own excuse, and it was wrong.** Our first explanation was
+that the public dataset contains lone fraudsters rather than organised rings. We
+tested it, found no support, and withdrew it.
 
-> The method works on data we built. It does nothing on data we didn't. We
-> looked hard for the reason and did not find it. That is where the project
-> honestly stands.
+**So we asked the question underneath.** Does fraud actually cluster in that
+data, more than chance? We shuffled account membership 400 times, keeping the
+cluster sizes identical, and compared.
+
+| | Fraud clustered together | By chance | Verdict |
+|---|---|---|---|
+| Our data | 31.1% | 0.0% | Overwhelming structure |
+| Real data | 2.6% | 0.4% | Real structure, 9.2 sd, but tiny |
+
+There *are* rings in the real data. Just barely any. Only **42 of 3,213**
+fraudulent payments sit in a mostly-fraudulent group, so even a perfect ring
+detector could reach at most **1.3% of the fraud**. Our measurement noise is
+larger than that.
+
+> The null is explained. There is real collusion in the public dataset, roughly
+> twelve times weaker than in ours, and far below what any experiment at this
+> size could detect. Reporting "no difference" was correct, because there was
+> almost nothing there to find.
+
+The condition for this method is not "collusion exists" but **"enough collusion
+to matter"**.
 
 Full write-up in [FINDINGS.md](FINDINGS.md).
 

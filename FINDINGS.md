@@ -231,7 +231,10 @@ don't work":
    fraud. It has no ring labels because it largely has no rings. RingFence
    detects *collusion structure*; asking it to improve single-actor fraud
    detection is asking the wrong question of it.
-3. **The entity aggregation was already done.** Vesta's `C1` to `C14` are counts of
+3. **There is barely any ring structure to find.** Quantified in F11: only 1.31%
+   of test fraud sits in a majority-fraud cluster, which is below the resolution
+   of the measurement.
+4. **The entity aggregation was already done.** Vesta's `C1` to `C14` are counts of
    addresses and phones associated with a card, a hand-engineered version of
    what the graph computes. The baseline already has them, and the honest
    ablation gave them to both arms.
