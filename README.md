@@ -263,6 +263,11 @@ against a baked copy of its own API responses, so the whole demo works on a CDN
 with no server behind it. The console reads that bundle when it is present and
 falls back to the live service when it is not, so one page serves both.
 
+The console tells a first-time visitor what to do: it opens on a strong case so
+the screen is not blank, and a one-time pointer above the queue says that each
+row is a payment and what clicking one will show. It goes away for good the
+moment anyone actually clicks something.
+
 Each case in the console ends with the note that would go to the merchant,
 drafted from the evidence on screen and then checked back against it. The
 fact check is visible in the panel: it says whether you are reading a model

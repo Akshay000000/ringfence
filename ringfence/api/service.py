@@ -30,6 +30,9 @@ from ..model.dataset import split_frames
 from ..model.train import load_arms, predict
 
 CONSOLE = Path(__file__).parent / "console.html"
+# The console asks for /favicon.svg. On the deployed site it sits at the root;
+# served locally it would 404, so the one file is routed rather than duplicated.
+FAVICON = Path(__file__).resolve().parents[2] / "site" / "favicon.svg"
 PRECOMPUTED_ALERTS = 400
 
 
@@ -162,6 +165,12 @@ def state() -> State:
 
 async def console(request):
     return FileResponse(CONSOLE, media_type="text/html")
+
+
+async def favicon(request):
+    if not FAVICON.exists():  # pragma: no cover - only when run outside the repo
+        return JSONResponse({"error": "not found"}, status_code=404)
+    return FileResponse(FAVICON, media_type="image/svg+xml")
 
 
 async def health(request):
@@ -328,6 +337,7 @@ async def rings(request):
 
 routes = [
     Route("/", console),
+    Route("/favicon.svg", favicon),
     Route("/api/health", health),
     Route("/api/summary", summary),
     Route("/api/alerts", alerts),

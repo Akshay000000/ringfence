@@ -4,6 +4,26 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>RingFence Analyst Console</title>
+<meta name="description" content="Work a live queue of scored payments ranked by money at risk, with the linked-account evidence behind every alert and the note that would go to the merchant.">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<meta name="theme-color" content="#faf9f7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0c0c0b" media="(prefers-color-scheme: dark)">
+<link rel="canonical" href="https://ringfence-razor.vercel.app/console.html">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="RingFence">
+<meta property="og:url" content="https://ringfence-razor.vercel.app/console.html">
+<meta property="og:title" content="RingFence, the analyst console">
+<meta property="og:description" content="Work a live queue of scored payments ranked by money at risk, with the linked-account evidence behind every alert and the note that would go to the merchant.">
+<meta property="og:image" content="https://ringfence-razor.vercel.app/assets/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="RingFence: eight payment accounts drawn around the two identifiers they share.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="RingFence, the analyst console">
+<meta name="twitter:description" content="Work a live queue of scored payments ranked by money at risk, with the linked-account evidence behind every alert and the note that would go to the merchant.">
+<meta name="twitter:image" content="https://ringfence-razor.vercel.app/assets/og.png">
 <style>
   :root {
     color-scheme: light;
@@ -161,6 +181,41 @@
   .reason .rbar.tab { background: var(--series-baseline); }
   .reason .detail { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
 
+  /* First-visit orientation.
+     The console opens on a good case, which is right, and that is also the
+     problem: a judge who lands here cold sees a filled screen and no cue that
+     the queue on the left is the thing to click. This says so once, then gets
+     out of the way for good. */
+  .firstrun {
+    position: relative; margin: 0 0 12px;
+    border: 1px solid var(--series-graph); border-radius: 8px;
+    padding: 12px 14px 13px; font-size: 12.5px; line-height: 1.55;
+    color: var(--text-primary);
+    background: var(--surface-1);  /* fallback where color-mix is unsupported */
+    background: color-mix(in srgb, var(--series-graph) 7%, var(--surface-1));
+  }
+  .firstrun b { font-weight: 600; }
+  .firstrun p { margin: 0; padding-right: 22px; }
+  .firstrun .go {
+    display: inline-block; margin-top: 9px; text-align: left; font: inherit; font-size: 12px; cursor: pointer;
+    background: none; border: 0; padding: 0; color: var(--series-graph);
+    text-decoration: underline; text-underline-offset: 3px;
+  }
+  .firstrun .x {
+    position: absolute; top: 7px; right: 8px; cursor: pointer; font: inherit;
+    background: none; border: 0; color: var(--text-muted); font-size: 15px;
+    line-height: 1; padding: 3px 5px; border-radius: 4px;
+  }
+  .firstrun .x:hover { color: var(--text-primary); }
+  /* The arrow ties the words to the rows they are about. */
+  .firstrun::after {
+    content: ""; position: absolute; left: 26px; bottom: -7px; width: 12px; height: 12px;
+    background: var(--surface-1);
+    background: color-mix(in srgb, var(--series-graph) 7%, var(--surface-1));
+    border-right: 1px solid var(--series-graph); border-bottom: 1px solid var(--series-graph);
+    transform: rotate(45deg);
+  }
+
   .note {
     border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px;
     background: var(--surface-1); margin: 4px 0 4px;
@@ -253,6 +308,14 @@
         <button data-f="bust_out" aria-pressed="false">Bust-out</button>
       </div>
       <p class="hint"><kbd>j</kbd> <kbd>k</kbd> to move, <kbd>Enter</kbd> to open. Click any row.</p>
+      <div class="firstrun" id="firstrun" hidden>
+        <button class="x" id="firstrunClose" aria-label="Dismiss">&times;</button>
+        <p><b>Start here.</b> Each row is one payment, scored and ranked by the money at
+          risk. Click any of them and the panel on the right shows why it scored, the
+          accounts it is linked to and what they share, and the note that would go to the
+          merchant. One case is already open so the screen is not blank.</p>
+        <button class="go" id="firstrunPick">Show me a case the ordinary system missed &rarr;</button>
+      </div>
       <div class="queue">
         <table>
           <thead><tr><th>Payment</th><th class="num">Score</th><th class="num">At risk</th><th>Truth</th></tr></thead>
@@ -412,7 +475,7 @@ async function loadQueue(filter) {
     </tr>`;
   }).join('') || '<tr><td colspan="4" class="empty">No alerts match.</td></tr>';
   document.querySelectorAll('#queue tr[data-id]').forEach(tr =>
-    tr.onclick = () => selectAlert(tr.dataset.id));
+    tr.onclick = () => { dismissFirstRun(); selectAlert(tr.dataset.id); });
 }
 
 function subgraph(ev) {
@@ -557,6 +620,39 @@ function syncHash(id) {
   history.replaceState(null, '', u);
 }
 
+// First-visit orientation, shown once per browser and dismissed by any real use.
+//
+// localStorage is wrapped because it throws outright in a few contexts (private
+// windows with site data blocked, some embedded viewers), and a console that
+// fails to paint because it could not read a preference would be a poor trade
+// for a hint.
+const FIRSTRUN_KEY = 'ringfence.oriented';
+
+function seenBefore() {
+  try { return localStorage.getItem(FIRSTRUN_KEY) === '1'; } catch (e) { return false; }
+}
+
+function dismissFirstRun() {
+  const el = document.getElementById('firstrun');
+  if (el) el.hidden = true;
+  try { localStorage.setItem(FIRSTRUN_KEY, '1'); } catch (e) { /* nothing to do */ }
+}
+
+function offerFirstRun() {
+  if (seenBefore()) return;
+  const el = document.getElementById('firstrun');
+  if (!el) return;
+  el.hidden = false;
+  document.getElementById('firstrunClose').onclick = dismissFirstRun;
+  // The one button worth offering a cold reader: the filter that is the whole
+  // argument, rather than making them guess which of eight chips matters.
+  document.getElementById('firstrunPick').onclick = () => {
+    const chip = document.querySelector('#filters button[data-f="graph_only"]');
+    if (chip) chip.click();
+    dismissFirstRun();
+  };
+}
+
 // j/k walk the queue, Enter opens. Analysts work queues from the keyboard.
 addEventListener('keydown', e => {
   if (e.target.tagName === 'INPUT' || e.metaKey || e.ctrlKey) return;
@@ -568,7 +664,7 @@ addEventListener('keydown', e => {
   else if (e.key === 'k' || e.key === 'ArrowUp') next = rows[Math.max(at - 1, 0)];
   else return;
   e.preventDefault();
-  if (next) { selectAlert(next.dataset.id); next.scrollIntoView({ block: 'nearest' }); }
+  if (next) { dismissFirstRun(); selectAlert(next.dataset.id); next.scrollIntoView({ block: 'nearest' }); }
 });
 
 document.getElementById('filters').onclick = e => {
@@ -593,6 +689,9 @@ loadSummary().then(() => loadQueue('')).then(async () => {
     || best?.a?.payment_id
     || document.querySelector('#queue tr[data-id]')?.dataset.id;
   if (pick) selectAlert(pick);
+  // After the first case is on screen, not before: the hint is about what to do
+  // next, and showing it over a loading spinner explains nothing.
+  offerFirstRun();
 });
 </script>
 </body>

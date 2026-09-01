@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="RingFence">
+  <!-- A tile rather than a bare glyph: at 16px on a browser tab a transparent
+       mark disappears into whichever theme the user is running.
+       The site header's mark has a faint outer ring. It is dropped here because
+       at favicon size it collapses into a grey smudge around the shape, and the
+       strokes are thin enough to keep the triangle's hole open at 16 pixels,
+       which is the difference between three linked nodes and a blue blob. -->
+  <rect width="64" height="64" rx="14" fill="#12110f"/>
+  <path d="M32 15 47 41M32 15 17 41M18.5 42.5h27"
+        stroke="#4d92ea" stroke-width="4" stroke-linecap="round" fill="none"/>
+  <circle cx="32" cy="15" r="7" fill="#5b9df0"/>
+  <circle cx="47" cy="42" r="7" fill="#5b9df0"/>
+  <circle cx="17" cy="42" r="7" fill="#5b9df0"/>
+</svg>

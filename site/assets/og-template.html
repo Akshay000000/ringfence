@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>RingFence social card</title>
+<!--
+  Source for site/assets/og.png. Kept in the repo rather than thrown away after
+  rendering, because the alternative is a binary nobody can edit: the next person
+  who wants to change the headline would have to rebuild the card from scratch.
+
+  Rendered at exactly 1200x630 by tools/render_og.py. Fonts are deliberately
+  ones the render machine actually has, since the card is baked once and a
+  missing webfont would silently fall back to something worse.
+-->
+<style>
+  @page { size: 1200px 630px; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 1200px; height: 630px; overflow: hidden;
+    background: #0c0c0b;
+    font-family: Carlito, "Liberation Sans", system-ui, sans-serif;
+    color: #f7f6f3;
+    position: relative;
+  }
+  /* A single wash behind the diagram, so the eye lands right of centre and the
+     headline keeps a clean dark field to sit on. */
+  .wash {
+    position: absolute; right: -140px; top: -180px; width: 780px; height: 780px;
+    background: radial-gradient(circle, rgba(42,120,214,.30) 0%, rgba(42,120,214,.07) 45%, transparent 68%);
+  }
+  .frame { position: relative; height: 100%; padding: 60px 72px 52px; display: flex; flex-direction: column; }
+
+  .brand { display: flex; align-items: center; gap: 14px; }
+  .brand svg { width: 38px; height: 38px; }
+  .brand b { font-size: 27px; font-weight: 700; letter-spacing: -.01em; }
+  .brand .track {
+    margin-left: 14px; padding: 5px 13px 6px; border: 1px solid #2f2f2c; border-radius: 999px;
+    font-size: 15px; color: #b3b0a8; letter-spacing: .01em;
+  }
+
+  .middle { flex: 1; display: flex; align-items: center; gap: 56px; margin-top: 14px; }
+
+  h1 {
+    font-family: Charter, "Bitstream Charter", "Liberation Serif", Georgia, serif;
+    font-size: 63px; line-height: 1.08; font-weight: 400; letter-spacing: -.015em;
+    max-width: 640px;
+  }
+  h1 em { font-style: italic; color: #7fb4f5; }
+  .sub {
+    margin-top: 24px; font-size: 24px; line-height: 1.45; color: #b3b0a8; max-width: 600px;
+  }
+
+  .art { flex: none; width: 300px; }
+
+  .stats { display: flex; align-items: flex-end; border-top: 1px solid #252523; padding-top: 26px; }
+  .stats .url {
+    margin-left: auto; font-size: 18px; color: #6f6c66; letter-spacing: .01em; padding-bottom: 4px;
+  }
+  .stat { padding-right: 54px; }
+  .stat .n {
+    font-family: Charter, "Bitstream Charter", "Liberation Serif", Georgia, serif;
+    font-size: 40px; line-height: 1; letter-spacing: -.01em;
+  }
+  .stat .n.up { color: #5b9df0; }
+  .stat .l { margin-top: 9px; font-size: 17px; color: #8e8b83; letter-spacing: .01em; }
+</style>
+</head>
+<body>
+<div class="wash"></div>
+<div class="frame">
+
+  <div class="brand">
+    <svg viewBox="0 0 64 64" aria-hidden="true">
+      <path d="M32 15 47 41M32 15 17 41M18.5 42.5h27" stroke="#4d92ea" stroke-width="4"
+            stroke-linecap="round" fill="none"/>
+      <circle cx="32" cy="15" r="7" fill="#5b9df0"/>
+      <circle cx="47" cy="42" r="7" fill="#5b9df0"/>
+      <circle cx="17" cy="42" r="7" fill="#5b9df0"/>
+    </svg>
+    <b>RingFence</b>
+    <span class="track">Razorpay AI Buildathon 2026 &middot; Track 02</span>
+  </div>
+
+  <div class="middle">
+    <div>
+      <h1>A fraud ring is invisible <em>one payment at a time</em>.</h1>
+      <p class="sub">So look at what the accounts share. Ten strangers, one delivery
+        address, one device, all signed up the same week.</p>
+    </div>
+
+    <!-- The hero diagram, reduced to the one frame that carries the idea: accounts
+         that look unrelated until the identifiers between them are drawn in. -->
+    <svg class="art" viewBox="0 0 300 300" aria-hidden="true">
+      <g stroke="#43433e" stroke-width="1.6" fill="none">
+        <path d="M150.0 42.0 138 154M150.0 42.0 174 154M226.4 73.6 174 154M258.0 150.0 138 154M226.4 226.4 174 154M150.0 258.0 138 154M150.0 258.0 174 154M73.6 226.4 174 154M42.0 150.0 138 154M73.6 73.6 174 154"/>
+      </g>
+      <g fill="#2a78d6">
+        <circle cx="150.0" cy="42.0" r="12"/>
+        <circle cx="226.4" cy="73.6" r="12"/>
+        <circle cx="258.0" cy="150.0" r="12"/>
+        <circle cx="226.4" cy="226.4" r="12"/>
+        <circle cx="150.0" cy="258.0" r="12"/>
+        <circle cx="73.6" cy="226.4" r="12"/>
+        <circle cx="42.0" cy="150.0" r="12"/>
+        <circle cx="73.6" cy="73.6" r="12"/>
+      </g>
+      <rect x="126" y="142" width="24" height="24" rx="4" fill="#eb6834"/>
+      <rect x="162" y="142" width="24" height="24" rx="4" fill="#eb6834"/>
+    </svg>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><div class="n up">+23.9%</div><div class="l">more rings caught, same precision</div></div>
+    <div class="stat"><div class="n">564 &rarr; 27</div><div class="l">good customers wrongly blocked</div></div>
+    <div class="stat"><div class="n">56</div><div class="l">tests, six leakage checks</div></div>
+    <div class="url">ringfence-razor.vercel.app</div>
+  </div>
+
+</div>
+</body>
+</html>
