@@ -21,7 +21,7 @@ jobs:
           pip install -r requirements.txt -r requirements-dev.txt
 
       - name: Tests
-        run: pytest tests -q
+        run: python -m pytest tests -q
 
       # The unit tests cannot catch a pipeline that no longer runs end to end.
       # This builds a deliberately tiny corpus and drives every stage through it,

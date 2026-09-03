@@ -445,7 +445,31 @@ Reproduce: `python -m ringfence.cli narrative`.
 
 ---
 
-## F12. Residual limitations
+## F12. Green locally, red in CI, and the tests were never the problem
+
+Three consecutive CI runs failed at the `Tests` step against a suite that passed
+on every machine it was run on. The tests were fine. The command was not.
+
+`pytest tests` and `python -m pytest tests` are not the same command. The module
+form puts the working directory on `sys.path`; the console script does not. Every
+test here imports `ringfence` from the checkout rather than from an installed
+package, so the console script died at collection with `ModuleNotFoundError`
+before running a single test, while `make test`, which uses the module form,
+stayed green.
+
+The failure mode is worth naming because it is invisible from the inside: the
+suite is not broken, the code is not broken, and reproducing it locally requires
+running the command exactly the way CI runs it, which is the one thing nobody
+does. It is also silent in the sense that mattered here, since the run went red
+on a commit whose changes had nothing to do with it.
+
+Fixed twice over, deliberately. `pyproject.toml` sets `pythonpath = ["."]` so a
+bare `pytest` works for anyone who clones this, and CI now calls the module form
+so it cannot drift away from the Makefile again.
+
+---
+
+## F13. Residual limitations
 
 Things a reviewer should push on, listed before they have to ask.
 

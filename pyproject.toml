@@ -1,0 +1,13 @@
+# Only pytest configuration. RingFence is run from a checkout rather than
+# installed, so there is no build backend or package metadata here on purpose.
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+# Put the repo root on sys.path for the test run.
+#
+# Without this, `pytest tests` and `python -m pytest tests` behave differently:
+# the module form puts the working directory on sys.path and the console script
+# does not. Every test imports `ringfence`, so the console script failed at
+# collection with ModuleNotFoundError while `make test` passed, which is how CI
+# stayed red for three runs against a suite that was green locally.
+pythonpath = ["."]
