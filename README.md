@@ -3,6 +3,9 @@
 **Finding fraud rings in payment data by looking at what accounts share.**
 Razorpay AI Buildathon 2026 · Track 02, AI Risk Manager
 
+[![CI](https://github.com/Akshay000000/ringfence/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Akshay000000/ringfence/actions/workflows/ci.yml)
+[![Licence: MIT](https://img.shields.io/badge/licence-MIT-blue.svg)](LICENSE)
+
 [**Live demo**](https://ringfence-razor.vercel.app/) · [**Analyst console**](https://ringfence-razor.vercel.app/console.html) · [What broke along the way](FINDINGS.md) · [Architecture](ARCHITECTURE.md)
 
 ---
