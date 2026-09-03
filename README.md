@@ -329,3 +329,12 @@ the value it has.
 
 See **[ARCHITECTURE.md](ARCHITECTURE.md)** for the system design and
 **[FINDINGS.md](FINDINGS.md)** for the engineering log.
+
+---
+
+## Licence
+
+MIT, see [`LICENSE`](LICENSE). The synthetic corpus, the reports and the
+site are covered by the same terms. No IEEE-CIS data is redistributed here;
+that dataset carries Kaggle's own competition terms and has to be downloaded
+from the source.

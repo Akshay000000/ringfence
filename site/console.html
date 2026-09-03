@@ -126,6 +126,10 @@
   .gridline { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--grid); }
 
   .main { display: grid; grid-template-columns: 400px 1fr; gap: 16px; align-items: start; }
+  /* Grid children default to min-width:auto, so the card refused to shrink
+     below the queue table's own min-content width and pushed the page
+     sideways on a phone. The column may shrink; the table scrolls instead. */
+  .main > .card { min-width: 0; }
   @media (max-width: 1050px) { .main { grid-template-columns: 1fr; } }
 
   .filters { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
@@ -136,7 +140,10 @@
   }
   .filters button[aria-pressed="true"] { background: var(--text-primary); color: var(--surface-1); border-color: var(--text-primary); }
 
-  .queue { max-height: 560px; overflow-y: auto; margin: 0 -18px -16px; }
+  /* overflow-x keeps a wide table inside its own box. Without it the queue
+     pushed the entire console sideways on a phone, which is how the link
+     opens for anyone reading on one. */
+  .queue { max-height: 560px; overflow-y: auto; overflow-x: auto; margin: 0 -18px -16px; }
   table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
   thead th {
     position: sticky; top: 0; background: var(--surface-1); z-index: 1;

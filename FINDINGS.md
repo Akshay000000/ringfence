@@ -489,7 +489,7 @@ if any fails.
 |---|---|
 | V1 no forbidden column reaches the model | pass |
 | V2 graph window strictly earlier than the payments it scores | pass |
-| V3 label permutation collapses the signal | pass, permuted PR-AUC 0.0075 vs base rate 0.0088 (0.86×) |
+| V3 label permutation collapses the signal | pass, permuted PR-AUC 0.0081 vs base rate 0.0088 (0.92×) |
 | V4 test rings are novel | pass, 42 test rings, 0 seen in training |
 | V5 training labels had matured by as_of_day | pass, 0 violations |
 | V6 cluster statistics never reference an outcome column | pass |
